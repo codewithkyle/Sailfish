@@ -4,6 +4,7 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::fs;
 use std::path::Path;
+use std::fmt;
 use chrono::Utc;
 use std::io::BufReader;
 use r2d2_sqlite::{self, SqliteConnectionManager};
@@ -20,13 +21,13 @@ fn process_string_output(fresh_file:bool, result_str:String) -> String {
 #[post("/")]
 async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 
-    let dt = Utc::now();
-    let dt_str = dt.format("%Y-%m-%d").to_string();
+    let file_number: u32 = u32::MAX;
+    let file_name = format!("{0:11}.evts", file_number);
 
     let mut fresh_file: bool = false;
-    if !Path::new(&dt_str).exists() {
+    if !Path::new(&file_name).exists() {
         fresh_file = true;
-        fs::write(&dt_str, "")?;
+        fs::write(&file_name, "")?;
     }
     
     let out_str = process_string_output(fresh_file, String::from_utf8_lossy(&body).to_string());
@@ -34,7 +35,7 @@ async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
     let mut file = OpenOptions::new()
         .write(true)
         .append(true)
-        .open(&dt_str)
+        .open(&file_name)
         .unwrap();
     if let Err(_e) = file.write_all(out_str.as_bytes()) {
         return Err(error::ErrorBadRequest("File write error"));
