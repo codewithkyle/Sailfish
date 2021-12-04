@@ -7,9 +7,6 @@ use std::path::Path;
 use std::fmt;
 use chrono::Utc;
 use std::io::BufReader;
-use r2d2_sqlite::{self, SqliteConnectionManager};
-mod db;
-use db::{Pool, Queries};
 
 fn process_string_output(fresh_file:bool, result_str:String) -> String {
     if !fresh_file {
@@ -21,8 +18,8 @@ fn process_string_output(fresh_file:bool, result_str:String) -> String {
 #[post("/")]
 async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 
-    let file_number: u32 = u32::MAX;
-    let file_name = format!("{0:11}.evts", file_number);
+    let mut file_number: u32 = u32::MIN;
+    let file_name = format!("{:0>10}.evts", file_number);
 
     let mut fresh_file: bool = false;
     if !Path::new(&file_name).exists() {
@@ -69,12 +66,8 @@ async fn read() -> Result<HttpResponse, Error> {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 
-    let manager = SqliteConnectionManager::file("event-stream.db");
-    let pool = Pool::new(manager).unwrap();
-
     HttpServer::new(move || {
         App::new()
-            .data(pool.clone())
             .wrap(Cors::permissive())
             .wrap(middleware::Compress::new(ContentEncoding::Br))
             .service(ingest)
