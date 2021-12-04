@@ -6,21 +6,7 @@ use std::fs;
 use std::path::Path;
 use chrono::Utc;
 
-fn replace(search: &[u8], find: u8, replace: &[u8]) -> Vec<u8> {
-    let mut result = vec![];
-
-    for &b in search {
-        if b == find {
-            result.extend(replace);
-        } else {
-            result.push(b);
-        }
-    }
-
-    result
-}
-
-fn process_string_output(fresh_file:bool, result_str:&String) -> String {
+fn process_string_output(fresh_file:bool, result_str:String) -> String {
     if !fresh_file {
         return "\n".to_owned() + &result_str.to_owned();
     }
@@ -38,17 +24,8 @@ async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
         fresh_file = true;
         fs::write(&dt_str, "")?;
     }
-
-    let find_newline = b'\n';
-    let find_return = b'\r';
-    let find_tab = b'\t';
-    let replace_str = b"";
-    let mut result = replace(&body, find_newline, replace_str);
-    result = replace(&result, find_return, replace_str);
-    result = replace(&result, find_tab, replace_str);
     
-    let result_str = String::from_utf8_lossy(&result).to_string();
-    let out_str = process_string_output(fresh_file, &result_str);
+    let out_str = process_string_output(fresh_file, String::from_utf8_lossy(&body).to_string());
    
     let mut file = OpenOptions::new()
         .write(true)
