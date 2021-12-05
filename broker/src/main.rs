@@ -6,6 +6,7 @@ use std::fs;
 use std::path::Path;
 use chrono::Utc;
 use std::io::BufReader;
+use uuid::Uuid;
 
 const MAX_FILE_SIZE: u32 = 1073741824;
 const CONSUMER_CONFIG: &str = "consumers.cfg";
@@ -56,6 +57,10 @@ fn bump_active_file() -> String {
     LOG_DIR.to_owned() + "/" + &file_name
 }
 
+fn left_pad_u32(num: u32) -> String {
+    format!("{:0>10}", num)
+}
+
 #[post("/")]
 async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 
@@ -82,6 +87,8 @@ async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 #[get("/")]
 async fn read() -> Result<HttpResponse, Error> {
 
+    // TODO: rewrite as websocket 
+
     let dt = Utc::now();
     let dt_str = dt.format("%Y-%m-%d").to_string();
 
@@ -101,6 +108,22 @@ async fn read() -> Result<HttpResponse, Error> {
     Ok(HttpResponse::Ok().content_type("application/json").body(&buf.to_string()))
 }
 
+#[get("/new-mac")]
+async fn generate_mac() -> Result<HttpResponse, Error> {
+    let uuid = Uuid::new_v4(); 
+    let token = uuid.to_simple().to_string(); // 32 bytes
+    let file_size = get_file_size(&CONSUMER_CONFIG.to_string());
+    let mut file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(&CONSUMER_CONFIG)
+        .unwrap();
+    let mut new_consumer = token.clone() + left_pad_u32(u32::MIN).as_str() + left_pad_u32(u32::MIN).as_str();
+    new_consumer = process_string_output(file_size, new_consumer);
+    let _ = file.write_all(new_consumer.as_bytes());
+    Ok(HttpResponse::Ok().content_type("text/plain").body(token))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     prep_framework();
@@ -110,6 +133,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Compress::new(ContentEncoding::Br))
             .service(ingest)
             .service(read)
+            .service(generate_mac)
     })
     .bind("127.0.0.1:8080")?
     .run()
