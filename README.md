@@ -12,7 +12,7 @@ Exploring and prototyping a custom event streaming architecture.
 -   [x] Create a system where consumers can fail & recover during the reading process
 -   [x] Add persistence to consumer read statuses
 -   [x] Add consumer status endpoint
--   [ ] Setup spawnable consumer nodes
+-   [x] Setup spawnable consumer nodes
 -   [x] Add consumer acknowledgement endpoint
 -   [ ] Custom event format
     -   [ ] Time ordered event UUID

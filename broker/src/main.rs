@@ -295,11 +295,15 @@ async fn read_mac(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
     if consumer.status == 1 {
         line = read_next_line(&file_path, &consumer.offset);
         consumer.offset += line.size;
+        if line.data == "\n".to_string() {
+            line = read_next_line(&file_path, &consumer.offset);
+            consumer.offset += line.size;
+        }
     }
 
     update_consumer(&consumer);
 
-    if line.size > 0 {
+    if line.size > 0 && consumer.status == 1 {
         return Ok(HttpResponse::Ok().content_type("application/json").body(&line.data));
     }
     else {
