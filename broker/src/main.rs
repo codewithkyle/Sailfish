@@ -4,7 +4,6 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::fs;
 use std::path::Path;
-use chrono::Utc;
 use std::io::BufReader;
 use uuid::Uuid;
 
@@ -14,6 +13,7 @@ const EVENT_STREAM_CONFIG: &str = "event-stream.cfg";
 const LOG_DIR: &str = "logs";
 
 fn process_string_output(file_size: u64, result_str: String) -> String {
+
     if file_size > 0 {
         return "\n".to_owned() + &result_str.to_owned();
     }
@@ -21,6 +21,7 @@ fn process_string_output(file_size: u64, result_str: String) -> String {
 }
 
 fn get_active_file_number() -> u32 {
+
     let file = OpenOptions::new()
         .read(true)
         .write(false)
@@ -33,12 +34,14 @@ fn get_active_file_number() -> u32 {
 }
 
 fn get_active_file_path() -> String {
+
     let file_number = get_active_file_number();
     let file_name = format!("{:0>10}.evts", file_number);
     LOG_DIR.to_owned() + "/" + &file_name
 }
 
 fn get_file_size(file_path: &String) -> u64 {
+
     if !Path::new(&file_path).exists() {
         let _ = fs::write(&file_path, "");
     }
@@ -46,6 +49,7 @@ fn get_file_size(file_path: &String) -> u64 {
 }
 
 fn bump_active_file() -> String {
+
     let file_number = get_active_file_number() + 1;
     let mut file = OpenOptions::new()
         .write(true)
@@ -55,10 +59,6 @@ fn bump_active_file() -> String {
     let _ = file.write_all(file_number.to_string().as_bytes());
     let file_name = format!("{:0>10}.evts", file_number);
     LOG_DIR.to_owned() + "/" + &file_name
-}
-
-fn left_pad_u32(num: u32) -> String {
-    format!("{:0>10}", num)
 }
 
 #[post("/")]
@@ -87,29 +87,36 @@ async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 #[get("/")]
 async fn read() -> Result<HttpResponse, Error> {
 
-    // TODO: rewrite as websocket 
-
-    let dt = Utc::now();
-    let dt_str = dt.format("%Y-%m-%d").to_string();
-
     let file = OpenOptions::new()
         .read(true)
         .write(false)
         .append(false)
-        .open(&dt_str)
+        .open(&CONSUMER_CONFIG)
         .unwrap();
-    let offset = 0;
     let mut reader = BufReader::new(file);
-    let _ = reader.seek_relative(offset);
-    let mut buf: String = String::new();
-    let line_size = reader.read_line(&mut buf)?;
-    let new_offset = offset + (line_size as i64);
+    
+    let mut uid_buf = vec![0u8; 32];
+    let _ = reader.read(&mut uid_buf)?;
+    let uid = String::from_utf8_lossy(&uid_buf).to_string();
 
-    Ok(HttpResponse::Ok().content_type("application/json").body(&buf.to_string()))
+    let mut status_buf = [0u8; 1];
+    let _ = reader.read(&mut status_buf)?;
+    let status = u8::from_be_bytes(status_buf);
+
+    let mut file_buf = [0u8; 4];
+    let _ = reader.read(&mut file_buf)?;
+    let file_number = u32::from_be_bytes(file_buf);
+
+    let mut offset_buf = [0u8; 4];
+    let _ = reader.read(&mut offset_buf)?;
+    let offset = u32::from_be_bytes(offset_buf);
+
+    Ok(HttpResponse::Ok().content_type("text/plain").body(status.to_string()))
 }
 
 #[get("/new-mac")]
 async fn generate_mac() -> Result<HttpResponse, Error> {
+
     let uuid = Uuid::new_v4(); 
     let token = uuid.to_simple().to_string(); // 32 bytes
     let file_size = get_file_size(&CONSUMER_CONFIG.to_string());
@@ -118,14 +125,19 @@ async fn generate_mac() -> Result<HttpResponse, Error> {
         .append(true)
         .open(&CONSUMER_CONFIG)
         .unwrap();
-    let mut new_consumer = token.clone() + left_pad_u32(u32::MIN).as_str() + left_pad_u32(u32::MIN).as_str();
+    let mut new_consumer = token.clone();
     new_consumer = process_string_output(file_size, new_consumer);
-    let _ = file.write_all(new_consumer.as_bytes());
+    let _ = file.write(&new_consumer.as_bytes());
+    let _ = file.write(&0_u8.to_be_bytes()); // 1 byte
+    let _ = file.write(&0_u32.to_be_bytes()); // 4 bytes
+    let _ = file.write(&0_u32.to_be_bytes()); // 4 bytes
+
     Ok(HttpResponse::Ok().content_type("text/plain").body(token))
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+
     prep_framework();
     HttpServer::new(move || {
         App::new()
@@ -141,6 +153,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn prep_framework() {
+
     let _ = fs::create_dir_all(&LOG_DIR);
     if !Path::new(&EVENT_STREAM_CONFIG).exists() {
         let _ = fs::write(&EVENT_STREAM_CONFIG, u32::MIN.to_string());
