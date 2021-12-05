@@ -14,11 +14,11 @@ Exploring and prototyping a custom event streaming architecture.
 -   [x] Add consumer status endpoint
 -   [x] Setup spawnable consumer nodes
 -   [x] Add consumer acknowledgement endpoint
--   [ ] Custom event format
-    -   [ ] Time ordered event UUID
-    -   [ ] Event recieved timestamp
-    -   [ ] Length
-    -   [ ] Value
+-   [x] Custom event format
+    -   [x] UUIDs
+    -   [x] Event recieved timestamp
+    -   [x] Custom message lengths
+    -   [x] Data
 -   [ ] Allow consumers to request batched events
 -   [ ] Switch all fs write OPs to BufWriter
 
