@@ -1,5 +1,7 @@
-use actix_web::{error, post, get, web, http::ContentEncoding, middleware, App, HttpResponse, HttpServer, Error};
+use actix_web::{error, post, get, web, http::ContentEncoding, middleware, App, HttpResponse, HttpServer, Error, http::StatusCode};
 use actix_cors::Cors;
+use serde::{Deserialize, Serialize};
+
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::fs;
@@ -11,6 +13,14 @@ const MAX_FILE_SIZE: u32 = 1073741824;
 const CONSUMER_CONFIG: &str = "consumers.cfg";
 const EVENT_STREAM_CONFIG: &str = "event-stream.cfg";
 const LOG_DIR: &str = "logs";
+
+#[derive(Serialize, Deserialize)]
+struct Consumer {
+    uid: String,
+    status: u8,
+    file_number: u32,
+    offset: u32,
+}
 
 fn process_string_output(file_size: u64, result_str: String) -> String {
 
@@ -61,6 +71,57 @@ fn bump_active_file() -> String {
     LOG_DIR.to_owned() + "/" + &file_name
 }
 
+fn lookup_consumer(mac: &String) -> Consumer {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(false)
+        .append(false)
+        .open(&CONSUMER_CONFIG)
+        .unwrap();
+    let mut reader = BufReader::new(file);
+
+    let mut consumer = Consumer {
+        uid: "".to_string(),
+        status: 0,
+        file_number: 0,
+        offset: 0,
+    };
+
+    loop {
+        let mut uid_buf = vec![0u8; 32];
+        let buf_size = reader.read(&mut uid_buf);
+        if buf_size.unwrap() == 0 {
+            break;
+        }
+        let uid = String::from_utf8(uid_buf).unwrap().to_string();
+        if uid == mac.to_owned() {
+            consumer.uid = uid;
+
+            let mut status_buf = [0u8; 1];
+            let _ = reader.read(&mut status_buf);
+            let status = u8::from_be_bytes(status_buf);
+            consumer.status = status;
+
+            let mut file_buf = [0u8; 4];
+            let _ = reader.read(&mut file_buf);
+            let file_number = u32::from_be_bytes(file_buf);
+            consumer.file_number = file_number;
+
+            let mut offset_buf = [0u8; 4];
+            let _ = reader.read(&mut offset_buf);
+            let offset = u32::from_be_bytes(offset_buf);
+            consumer.offset = offset;
+
+            break;
+        }
+
+        let mut temp_buf: Vec<u8> = Vec::new();
+        let _ = reader.read_until(b'\n', &mut temp_buf);
+    }
+
+    return consumer;
+}
+
 #[post("/")]
 async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 
@@ -84,34 +145,18 @@ async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
     Ok(HttpResponse::Ok().body("Ok"))
 }
 
-#[get("/")]
-async fn read() -> Result<HttpResponse, Error> {
+#[get("/{mac}")]
+async fn read(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
 
-    let file = OpenOptions::new()
-        .read(true)
-        .write(false)
-        .append(false)
-        .open(&CONSUMER_CONFIG)
-        .unwrap();
-    let mut reader = BufReader::new(file);
-    
-    let mut uid_buf = vec![0u8; 32];
-    let _ = reader.read(&mut uid_buf)?;
-    let uid = String::from_utf8_lossy(&uid_buf).to_string();
+    let mac = path.into_inner().0;
+    let consumer = lookup_consumer(&mac);
 
-    let mut status_buf = [0u8; 1];
-    let _ = reader.read(&mut status_buf)?;
-    let status = u8::from_be_bytes(status_buf);
-
-    let mut file_buf = [0u8; 4];
-    let _ = reader.read(&mut file_buf)?;
-    let file_number = u32::from_be_bytes(file_buf);
-
-    let mut offset_buf = [0u8; 4];
-    let _ = reader.read(&mut offset_buf)?;
-    let offset = u32::from_be_bytes(offset_buf);
-
-    Ok(HttpResponse::Ok().content_type("text/plain").body(status.to_string()))
+    if consumer.uid == mac {
+        return Ok(HttpResponse::Ok().content_type("application/json").json(consumer));
+    }
+    else {
+        return Ok(HttpResponse::build(StatusCode::NOT_FOUND).content_type("application/json").finish())
+    }
 }
 
 #[get("/new-mac")]
@@ -143,9 +188,9 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Cors::permissive())
             .wrap(middleware::Compress::new(ContentEncoding::Br))
-            .service(ingest)
-            .service(read)
+            .service(ingest) 
             .service(generate_mac)
+            .service(read)
     })
     .bind("127.0.0.1:8080")?
     .run()
