@@ -6,11 +6,13 @@ Exploring and prototyping a custom event streaming architecture.
 
 -   [x] Create a system where n+1 number of producers can submit data
 -   [x] Log data
--   [ ] Create a system where n+1 number of approved consumers can sequentially read the data
--   [ ] Create a system where a new consumer could process all previous data
--   [ ] Create a system where a new consumer could join the live data stream after processing the entire log
--   [ ] Create a system where consumers can fail & recover during the reading process
--   [ ] Add persistence to consumer read statuses
+-   [x] Create a system where n+1 number of approved consumers can sequentially read the data
+-   [x] Create a system where a new consumer could process all previous data
+-   [x] Create a system where a new consumer could join the live data stream after processing the entire log
+-   [x] Create a system where consumers can fail & recover during the reading process
+-   [x] Add persistence to consumer read statuses
+-   [ ] Setup consumers as Web Sockets
+-   [ ] Add consumer status endpoint
 
 ## Technology
 

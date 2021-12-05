@@ -1,10 +1,12 @@
 use actix_web::{error, post, get, web, http::ContentEncoding, middleware, App, HttpResponse, HttpServer, Error, http::StatusCode};
 use actix_cors::Cors;
+
 use serde::{Deserialize, Serialize};
 
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::fs;
+use std::io::SeekFrom;
 use std::path::Path;
 use std::io::BufReader;
 use uuid::Uuid;
@@ -20,6 +22,12 @@ struct Consumer {
     status: u8,
     file_number: u32,
     offset: u32,
+    self_offset: u32,
+}
+
+struct ReadOP {
+    data: String,
+    size: u32,
 }
 
 fn process_string_output(file_size: u64, result_str: String) -> String {
@@ -46,6 +54,11 @@ fn get_active_file_number() -> u32 {
 fn get_active_file_path() -> String {
 
     let file_number = get_active_file_number();
+    let file_name = format!("{:0>10}.evts", file_number);
+    LOG_DIR.to_owned() + "/" + &file_name
+}
+
+fn get_file_path(file_number: u32) -> String {
     let file_name = format!("{:0>10}.evts", file_number);
     LOG_DIR.to_owned() + "/" + &file_name
 }
@@ -85,12 +98,13 @@ fn lookup_consumer(mac: &String) -> Consumer {
         status: 0,
         file_number: 0,
         offset: 0,
+        self_offset: 0,
     };
 
     loop {
         let mut uid_buf = vec![0u8; 32];
-        let buf_size = reader.read(&mut uid_buf);
-        if buf_size.unwrap() == 0 {
+        let buf_size = reader.read(&mut uid_buf).unwrap();
+        if buf_size == 0 {
             break;
         }
         let uid = String::from_utf8(uid_buf).unwrap().to_string();
@@ -115,11 +129,44 @@ fn lookup_consumer(mac: &String) -> Consumer {
             break;
         }
 
+        consumer.self_offset += u32::try_from(buf_size).unwrap();
         let mut temp_buf: Vec<u8> = Vec::new();
-        let _ = reader.read_until(b'\n', &mut temp_buf);
+        let skip_size = reader.read_until(b'\n', &mut temp_buf).unwrap();
+        consumer.self_offset += u32::try_from(skip_size).unwrap();
     }
 
     return consumer;
+}
+
+fn update_consumer(consumer: &Consumer) -> () {
+    let mut file = OpenOptions::new()
+        .read(false)
+        .write(true)
+        .append(false)
+        .open(&CONSUMER_CONFIG)
+        .unwrap();
+    let _ = file.seek(SeekFrom::Start(consumer.self_offset.into()));
+    let _ = file.write(&consumer.uid.clone().as_bytes()); // 32 bytes
+    let _ = file.write(&consumer.status.to_be_bytes()); // 1 byte
+    let _ = file.write(&consumer.file_number.to_be_bytes()); // 4 bytes
+    let _ = file.write(&consumer.offset.to_be_bytes()); // 4 bytes
+}
+
+fn read_next_line(file_path: &String, offset: &u32) -> ReadOP {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(false)
+        .append(false)
+        .open(&file_path)
+        .unwrap();
+    let mut reader = BufReader::new(file);
+    let _ = reader.seek_relative(offset.to_owned() as i64);
+    let mut data: String = String::new();
+    let size = reader.read_line(&mut data);
+    ReadOP {
+        data: data,
+        size: u32::try_from(size.unwrap()).unwrap(),
+    }
 }
 
 #[post("/")]
@@ -149,13 +196,47 @@ async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 async fn read(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
 
     let mac = path.into_inner().0;
-    let consumer = lookup_consumer(&mac);
+    let mut consumer = lookup_consumer(&mac);
 
-    if consumer.uid == mac {
-        return Ok(HttpResponse::Ok().content_type("application/json").json(consumer));
+    if consumer.uid != mac {
+        return Ok(HttpResponse::build(StatusCode::NOT_FOUND).content_type("application/json").finish());
+    }
+
+    let file_path = get_file_path(consumer.file_number);
+    if !Path::new(&file_path).exists() {
+        consumer.status = 0;
+    }
+    else if get_file_size(&file_path) == (consumer.offset as u64) {
+        let next_file_path = get_file_path(consumer.file_number + 1);
+        if Path::new(&next_file_path).exists() {
+            consumer.status = 1;
+            consumer.file_number += 1;
+            consumer.offset = 0;
+        }
+        else {
+            consumer.status = 0;
+        }
     }
     else {
-        return Ok(HttpResponse::build(StatusCode::NOT_FOUND).content_type("application/json").finish())
+        consumer.status = 1;
+    }
+   
+    let mut line = ReadOP {
+        data: "".to_string(),
+        size: 0,
+    };
+    if consumer.status == 1 {
+        line = read_next_line(&file_path, &consumer.offset);
+        consumer.offset += line.size;
+    }
+
+    update_consumer(&consumer);
+
+    if line.size > 0 {
+        return Ok(HttpResponse::Ok().content_type("application/json").body(&line.data));
+    }
+    else {
+        return Ok(HttpResponse::build(StatusCode::NO_CONTENT).content_type("application/json").finish());
     }
 }
 
