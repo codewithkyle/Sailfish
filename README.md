@@ -21,6 +21,8 @@ Exploring and prototyping a custom event streaming architecture.
     -   [x] Data
 -   [ ] Allow consumers to request batched events
 -   [ ] Switch all fs write OPs to BufWriter
+-   [ ] Allow consumers to rewind
+-   [ ] Add a process to compact old logs
 
 ## Technology
 
