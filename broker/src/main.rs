@@ -23,6 +23,7 @@ struct Consumer {
     file_number: u32,
     offset: u32,
     self_offset: u32,
+    actual_offset: u32,
 }
 
 struct ReadOP {
@@ -99,6 +100,7 @@ fn lookup_consumer(mac: &String) -> Consumer {
         file_number: 0,
         offset: 0,
         self_offset: 0,
+        actual_offset: 0,
     };
 
     loop {
@@ -125,6 +127,11 @@ fn lookup_consumer(mac: &String) -> Consumer {
             let _ = reader.read(&mut offset_buf);
             let offset = u32::from_be_bytes(offset_buf);
             consumer.offset = offset;
+
+            let mut act_offset_buf = [0u8; 4];
+            let _ = reader.read(&mut act_offset_buf);
+            let actual_offset = u32::from_be_bytes(act_offset_buf);
+            consumer.actual_offset = actual_offset;
 
             break;
         }
@@ -154,6 +161,7 @@ fn get_consumer_status() -> String {
             self_offset: 0,
             offset: 0,
             status: 0,
+            actual_offset: 0,
         };
         let mut uid_buf = vec![0u8; 32];
         let buf_size = reader.read(&mut uid_buf).unwrap();
@@ -176,6 +184,11 @@ fn get_consumer_status() -> String {
         let _ = reader.read(&mut offset_buf);
         let offset = u32::from_be_bytes(offset_buf);
         consumer.offset = offset;
+
+        let mut act_offset_buf = [0u8; 4];
+        let _ = reader.read(&mut act_offset_buf);
+        let actual_offset = u32::from_be_bytes(act_offset_buf);
+        consumer.actual_offset = actual_offset;
        
         if consumer_status == "[" {
             consumer_status += &serde_json::to_string(&consumer).unwrap();
@@ -203,6 +216,7 @@ fn update_consumer(consumer: &Consumer) -> () {
     let _ = file.write(&consumer.status.to_be_bytes()); // 1 byte
     let _ = file.write(&consumer.file_number.to_be_bytes()); // 4 bytes
     let _ = file.write(&consumer.offset.to_be_bytes()); // 4 bytes
+    let _ = file.write(&consumer.actual_offset.to_be_bytes()); // 4 bytes
 }
 
 fn read_next_line(file_path: &String, offset: &u32) -> ReadOP {
@@ -246,7 +260,7 @@ async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 }
 
 #[get("/{mac}")]
-async fn read(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
+async fn read_mac(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
 
     let mac = path.into_inner().0;
     let mut consumer = lookup_consumer(&mac);
@@ -293,6 +307,24 @@ async fn read(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
     }
 }
 
+#[post("/{mac}")]
+async fn ack_mac(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
+
+    let mac = path.into_inner().0;
+    let mut consumer = lookup_consumer(&mac);
+
+    if consumer.uid != mac {
+        return Ok(HttpResponse::build(StatusCode::NOT_FOUND).content_type("application/json").finish());
+    }
+
+    consumer.actual_offset = consumer.offset;
+
+    update_consumer(&consumer);
+
+    return Ok(HttpResponse::Ok().content_type("application/json").finish());
+}
+
+
 #[get("/new-mac")]
 async fn generate_mac() -> Result<HttpResponse, Error> {
 
@@ -308,6 +340,7 @@ async fn generate_mac() -> Result<HttpResponse, Error> {
     new_consumer = process_string_output(file_size, new_consumer);
     let _ = file.write(&new_consumer.as_bytes());
     let _ = file.write(&0_u8.to_be_bytes()); // 1 byte
+    let _ = file.write(&0_u32.to_be_bytes()); // 4 bytes
     let _ = file.write(&0_u32.to_be_bytes()); // 4 bytes
     let _ = file.write(&0_u32.to_be_bytes()); // 4 bytes
 
@@ -331,7 +364,8 @@ async fn main() -> std::io::Result<()> {
             .service(ingest) 
             .service(generate_mac)
             .service(status)
-            .service(read)
+            .service(read_mac)
+            .service(ack_mac)
     })
     .bind("127.0.0.1:8080")?
     .run()

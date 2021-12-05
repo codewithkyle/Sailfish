@@ -11,9 +11,15 @@ Exploring and prototyping a custom event streaming architecture.
 -   [x] Create a system where a new consumer could join the live data stream after processing the entire log
 -   [x] Create a system where consumers can fail & recover during the reading process
 -   [x] Add persistence to consumer read statuses
--   [ ] Setup consumers as Web Sockets
 -   [x] Add consumer status endpoint
--   [ ] Add new event push logic to sleepy consumers
+-   [ ] Setup spawnable consumer nodes
+-   [x] Add consumer acknowledgement endpoint
+-   [ ] Custom event format
+    -   [ ] Time ordered event UUID
+    -   [ ] Event recieved timestamp
+    -   [ ] Length
+    -   [ ] Value
+-   [ ] Allow consumers to request batched events
 
 ## Technology
 
