@@ -9,7 +9,6 @@ use std::path::Path;
 use std::io::BufReader;
 use uuid::Uuid;
 use chrono::Utc;
-use std::fs::File;
 use std::io::{BufWriter, Write};
 
 const MAX_FILE_SIZE: u32 = 1073741824;
@@ -358,7 +357,6 @@ async fn read_mac(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
     update_consumer(&consumer);
 
     if consumer.status == 1 {
-        println!("{}", &event.message);
         let response = EventResponse {
             id: event.uid.to_owned(),
             timestamp: event.timestamp.to_owned(),
