@@ -12,7 +12,8 @@ Exploring and prototyping a custom event streaming architecture.
 -   [x] Create a system where consumers can fail & recover during the reading process
 -   [x] Add persistence to consumer read statuses
 -   [ ] Setup consumers as Web Sockets
--   [ ] Add consumer status endpoint
+-   [x] Add consumer status endpoint
+-   [ ] Add new event push logic to sleepy consumers
 
 ## Technology
 

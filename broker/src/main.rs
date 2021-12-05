@@ -1,7 +1,7 @@
 use actix_web::{error, post, get, web, http::ContentEncoding, middleware, App, HttpResponse, HttpServer, Error, http::StatusCode};
 use actix_cors::Cors;
 
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -16,7 +16,7 @@ const CONSUMER_CONFIG: &str = "consumers.cfg";
 const EVENT_STREAM_CONFIG: &str = "event-stream.cfg";
 const LOG_DIR: &str = "logs";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 struct Consumer {
     uid: String,
     status: u8,
@@ -113,8 +113,8 @@ fn lookup_consumer(mac: &String) -> Consumer {
 
             let mut status_buf = [0u8; 1];
             let _ = reader.read(&mut status_buf);
-            let status = u8::from_be_bytes(status_buf);
-            consumer.status = status;
+            let is_active = u8::from_be_bytes(status_buf);
+            consumer.status = is_active;
 
             let mut file_buf = [0u8; 4];
             let _ = reader.read(&mut file_buf);
@@ -136,6 +136,59 @@ fn lookup_consumer(mac: &String) -> Consumer {
     }
 
     return consumer;
+}
+
+fn get_consumer_status() -> String {
+    let mut consumer_status = "[".to_string();
+    let file = OpenOptions::new()
+        .read(true)
+        .write(false)
+        .append(false)
+        .open(&CONSUMER_CONFIG)
+        .unwrap();
+    let mut reader = BufReader::new(file);
+    loop {
+        let mut consumer = Consumer {
+            uid: "".to_string(),
+            file_number: 0,
+            self_offset: 0,
+            offset: 0,
+            status: 0,
+        };
+        let mut uid_buf = vec![0u8; 32];
+        let buf_size = reader.read(&mut uid_buf).unwrap();
+        if buf_size == 0 {
+            break;
+        }
+        let uid = String::from_utf8_lossy(&uid_buf).to_string();
+        consumer.uid = uid;
+        let mut status_buf = [0u8; 1];
+        let _ = reader.read(&mut status_buf);
+        let is_active = u8::from_be_bytes(status_buf);
+        consumer.status = is_active;
+
+        let mut file_buf = [0u8; 4];
+        let _ = reader.read(&mut file_buf);
+        let file_number = u32::from_be_bytes(file_buf);
+        consumer.file_number = file_number;
+
+        let mut offset_buf = [0u8; 4];
+        let _ = reader.read(&mut offset_buf);
+        let offset = u32::from_be_bytes(offset_buf);
+        consumer.offset = offset;
+       
+        if consumer_status == "[" {
+            consumer_status += &serde_json::to_string(&consumer).unwrap();
+        }
+        else { 
+            consumer_status += ",";
+            consumer_status += &serde_json::to_string(&consumer).unwrap();
+        }
+
+        let mut temp_buf: Vec<u8> = Vec::new();
+        let _ = reader.read_until(b'\n', &mut temp_buf).unwrap();
+    }
+    return consumer_status + "]";
 }
 
 fn update_consumer(consumer: &Consumer) -> () {
@@ -261,6 +314,12 @@ async fn generate_mac() -> Result<HttpResponse, Error> {
     Ok(HttpResponse::Ok().content_type("text/plain").body(token))
 }
 
+#[get("/status")]
+async fn status() -> Result<HttpResponse, Error> {
+    let status: String = get_consumer_status();
+    Ok(HttpResponse::Ok().content_type("application/json").body(status))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 
@@ -271,6 +330,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Compress::new(ContentEncoding::Br))
             .service(ingest) 
             .service(generate_mac)
+            .service(status)
             .service(read)
     })
     .bind("127.0.0.1:8080")?
