@@ -8,8 +8,11 @@ use chrono::Utc;
 use std::io::BufReader;
 
 const MAX_FILE_SIZE: u32 = 1073741824;
+const CONSUMER_CONFIG: &str = "consumers.cfg";
+const EVENT_STREAM_CONFIG: &str = "event-stream.cfg";
+const LOG_DIR: &str = "logs";
 
-fn process_string_output(file_size:u64, result_str:String) -> String {
+fn process_string_output(file_size: u64, result_str: String) -> String {
     if file_size > 0 {
         return "\n".to_owned() + &result_str.to_owned();
     }
@@ -20,7 +23,7 @@ fn get_active_file_number() -> u32 {
     let file = OpenOptions::new()
         .read(true)
         .write(false)
-        .open("event-stream.cfg")
+        .open(&EVENT_STREAM_CONFIG)
         .unwrap();
     let mut reader = BufReader::new(file);
     let mut buf: String = String::new();
@@ -28,16 +31,17 @@ fn get_active_file_number() -> u32 {
     buf.parse().unwrap()
 }
 
-fn get_active_file_name() -> String {
+fn get_active_file_path() -> String {
     let file_number = get_active_file_number();
-    format!("{:0>10}.evts", file_number)
+    let file_name = format!("{:0>10}.evts", file_number);
+    LOG_DIR.to_owned() + "/" + &file_name
 }
 
-fn get_file_size(file_name: &String) -> u64 {
-    if !Path::new(&file_name).exists() {
-        let _ = fs::write(&file_name, "");
+fn get_file_size(file_path: &String) -> u64 {
+    if !Path::new(&file_path).exists() {
+        let _ = fs::write(&file_path, "");
     }
-    fs::metadata(&file_name).unwrap().len()
+    fs::metadata(&file_path).unwrap().len()
 }
 
 fn bump_active_file() -> String {
@@ -45,27 +49,28 @@ fn bump_active_file() -> String {
     let mut file = OpenOptions::new()
         .write(true)
         .append(false)
-        .open("event-stream.cfg")
+        .open(&EVENT_STREAM_CONFIG)
         .unwrap();
     let _ = file.write_all(file_number.to_string().as_bytes());
-    format!("{:0>10}.evts", file_number)
+    let file_name = format!("{:0>10}.evts", file_number);
+    LOG_DIR.to_owned() + "/" + &file_name
 }
 
 #[post("/")]
 async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 
-    let mut file_name: String = get_active_file_name();
-    let mut file_size: u64 = get_file_size(&file_name);
+    let mut file_path: String = get_active_file_path();
+    let mut file_size: u64 = get_file_size(&file_path);
     if file_size >= MAX_FILE_SIZE.into() {
-        file_name = bump_active_file();
-        file_size = get_file_size(&file_name);
+        file_path = bump_active_file();
+        file_size = get_file_size(&file_path);
     }
     let out_str = process_string_output(file_size, String::from_utf8_lossy(&body).to_string());
    
     let mut file = OpenOptions::new()
         .write(true)
         .append(true)
-        .open(&file_name)
+        .open(&file_path)
         .unwrap();
     if let Err(_e) = file.write_all(out_str.as_bytes()) {
         return Err(error::ErrorBadRequest("File write error"));
@@ -112,12 +117,11 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn prep_framework() {
-    let cfg_file = "event-stream.cfg";
-    if !Path::new(&cfg_file).exists() {
-        let _ = fs::write(&cfg_file, u32::MIN.to_string());
+    let _ = fs::create_dir_all(&LOG_DIR);
+    if !Path::new(&EVENT_STREAM_CONFIG).exists() {
+        let _ = fs::write(&EVENT_STREAM_CONFIG, u32::MIN.to_string());
     }
-    let consumer_file = "consumers.cfg";
-    if !Path::new(&consumer_file).exists() {
-        let _ = fs::write(&consumer_file, "");
+    if !Path::new(&CONSUMER_CONFIG).exists() {
+        let _ = fs::write(&CONSUMER_CONFIG, "");
     }
 }
