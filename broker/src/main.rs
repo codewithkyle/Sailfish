@@ -1,8 +1,6 @@
-use actix_web::{error, post, get, web, http::ContentEncoding, middleware, App, HttpResponse, HttpServer, Error, http::StatusCode};
+use actix_web::{post, get, web, http::ContentEncoding, middleware, App, HttpResponse, HttpServer, Error, http::StatusCode};
 use actix_cors::Cors;
-
 use serde::{Serialize};
-
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::fs;
@@ -10,8 +8,12 @@ use std::io::SeekFrom;
 use std::path::Path;
 use std::io::BufReader;
 use uuid::Uuid;
+use chrono::Utc;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 const MAX_FILE_SIZE: u32 = 1073741824;
+const MAX_REQ_SIZE: u16 = u16::MAX;
 const CONSUMER_CONFIG: &str = "consumers.cfg";
 const EVENT_STREAM_CONFIG: &str = "event-stream.cfg";
 const LOG_DIR: &str = "logs";
@@ -26,9 +28,19 @@ struct Consumer {
     actual_offset: u32,
 }
 
-struct ReadOP {
-    data: String,
-    size: u32,
+#[derive(Serialize)]
+struct EventResponse {
+    id: String,
+    timestamp: u64,
+    data: serde_json::Value, 
+}
+
+struct Event {
+    uid: String,
+    timestamp: u64,
+    message_length: u16,
+    message_bytes: Vec<u8>,
+    message: String,
 }
 
 fn process_string_output(file_size: u64, result_str: String) -> String {
@@ -219,7 +231,8 @@ fn update_consumer(consumer: &Consumer) -> () {
     let _ = file.write(&consumer.actual_offset.to_be_bytes()); // 4 bytes
 }
 
-fn read_next_line(file_path: &String, offset: &u32) -> ReadOP {
+fn read_next_line(file_path: &String, offset: &u32) -> Event {
+
     let file = OpenOptions::new()
         .read(true)
         .write(false)
@@ -228,35 +241,76 @@ fn read_next_line(file_path: &String, offset: &u32) -> ReadOP {
         .unwrap();
     let mut reader = BufReader::new(file);
     let _ = reader.seek_relative(offset.to_owned() as i64);
-    let mut data: String = String::new();
-    let size = reader.read_line(&mut data);
-    ReadOP {
-        data: data,
-        size: u32::try_from(size.unwrap()).unwrap(),
-    }
+
+    let mut uid_buf = vec![0u8; 36];
+    let _ = reader.read(&mut uid_buf).unwrap(); 
+    let uid = String::from_utf8_lossy(&uid_buf).to_string();
+
+    let mut msg_length_buf = [0u8; 2];
+    let _ = reader.read(&mut msg_length_buf);
+    let msg_length: u16 = u16::from_be_bytes(msg_length_buf);
+
+    let mut timestamp_buf = [0u8; 8];
+    let _ = reader.read(&mut timestamp_buf);
+    let timestamp = u64::from_be_bytes(timestamp_buf);
+
+    let mut vec = Vec::with_capacity(msg_length as usize);
+    reader.take(msg_length as u64).read_to_end(&mut vec).unwrap();
+
+    let mut event = Event {
+        uid: uid,
+        timestamp: timestamp,
+        message_length: msg_length,
+        message_bytes: vec,
+        message: "{}".to_string(),
+    };
+
+    event.message = String::from_utf8_lossy(&event.message_bytes).to_string();
+    
+    return event;
+}
+
+fn write_event(file_path: String, body: web::Bytes) -> () {
+
+    let f = OpenOptions::new()
+        .append(true)
+        .open(file_path)
+        .unwrap();
+    let mut f = BufWriter::new(f);
+
+    let uuid = Uuid::new_v4(); 
+    let uid = uuid.to_string(); // 36 bytes
+    let _ = f.write_all(uid.as_bytes());
+
+    let msg_length: u16 = body.len().try_into().unwrap(); // 2 bytes
+    let _ = f.write_all(&msg_length.to_be_bytes());
+    
+    let now = Utc::now();
+    let now_mil = now.timestamp_millis();
+    let mil: u64 = now_mil as u64;
+    let _ = f.write_all(&mil.to_be_bytes()); // 8 bytes
+
+    let _ = f.write_all(&body);
+
+    f.flush().unwrap();
 }
 
 #[post("/")]
 async fn ingest(body: web::Bytes) -> Result<HttpResponse, Error> {
 
-    let mut file_path: String = get_active_file_path();
-    let mut file_size: u64 = get_file_size(&file_path);
-    if file_size >= MAX_FILE_SIZE.into() {
-        file_path = bump_active_file();
-        file_size = get_file_size(&file_path);
-    }
-    let out_str = process_string_output(file_size, String::from_utf8_lossy(&body).to_string());
-   
-    let mut file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .open(&file_path)
-        .unwrap();
-    if let Err(_e) = file.write_all(out_str.as_bytes()) {
-        return Err(error::ErrorBadRequest("File write error"));
+    if body.len() > MAX_REQ_SIZE.into() {
+        return Ok(HttpResponse::build(StatusCode::PAYLOAD_TOO_LARGE).finish());
     }
 
-    Ok(HttpResponse::Ok().body("Ok"))
+    let mut file_path: String = get_active_file_path();
+    let file_size: u64 = get_file_size(&file_path);
+    if file_size >= MAX_FILE_SIZE.into() {
+        file_path = bump_active_file();
+    }
+
+    write_event(file_path, body); 
+
+    Ok(HttpResponse::Ok().finish())
 }
 
 #[get("/{mac}")]
@@ -288,23 +342,29 @@ async fn read_mac(path: web::Path<(String,)>) -> Result<HttpResponse, Error> {
         consumer.status = 1;
     }
    
-    let mut line = ReadOP {
-        data: "".to_string(),
-        size: 0,
+    let mut event = Event {
+        uid: "".to_string(),
+        timestamp: 0,
+        message_length: 0,
+        message_bytes: Vec::new(),
+        message: "{}".to_string(),
     };
     if consumer.status == 1 {
-        line = read_next_line(&file_path, &consumer.offset);
-        consumer.offset += line.size;
-        if line.data == "\n".to_string() {
-            line = read_next_line(&file_path, &consumer.offset);
-            consumer.offset += line.size;
-        }
+        event = read_next_line(&file_path, &consumer.offset);
+        consumer.offset += event.message_length as u32;
+        consumer.offset += 46;
     }
 
     update_consumer(&consumer);
 
-    if line.size > 0 && consumer.status == 1 {
-        return Ok(HttpResponse::Ok().content_type("application/json").body(&line.data));
+    if consumer.status == 1 {
+        println!("{}", &event.message);
+        let response = EventResponse {
+            id: event.uid.to_owned(),
+            timestamp: event.timestamp.to_owned(),
+            data: serde_json::from_str(&event.message).unwrap(),
+        };
+        return Ok(HttpResponse::Ok().content_type("application/json").json(response));
     }
     else {
         return Ok(HttpResponse::build(StatusCode::NO_CONTENT).content_type("application/json").finish());

@@ -20,6 +20,7 @@ Exploring and prototyping a custom event streaming architecture.
     -   [ ] Length
     -   [ ] Value
 -   [ ] Allow consumers to request batched events
+-   [ ] Switch all fs write OPs to BufWriter
 
 ## Technology
 

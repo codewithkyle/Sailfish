@@ -10,23 +10,25 @@ if (!mac) {
 }
 
 async function ack() {
-    const response = await fetch(`http://127.0.0.1:8080/${mac}`, {
+    const request = await fetch(`http://127.0.0.1:8080/${mac}`, {
         method: "POST",
     });
-    if (response.ok) {
+    if (request.ok) {
         get();
     } else {
-        console.log(`Broker responded with: ${response.status}. Sleeping for 1 second.`);
-        setTimeout(ack, 1000);
+        console.log(`Broker responded with: ${request.status}. Sleeping for 5 seconds.`);
+        setTimeout(ack, 5000);
     }
 }
 
 async function get() {
-    const response = await fetch(`http://127.0.0.1:8080/${mac}`);
-    if (response.ok) {
-        if (response.status === 200) {
-            try {
-                const data = await response.json();
+    try {
+        const request = await fetch(`http://127.0.0.1:8080/${mac}`);
+        if (request.ok) {
+            if (request.status === 200) {
+                const response = await request.json();
+                const data = response.data;
+                console.log(response.id);
                 if (data.temp <= 15) {
                     console.log("Burr. It's cold.", data.temp);
                 } else if (data.temp >= 30) {
@@ -35,17 +37,18 @@ async function get() {
                     console.log("Perfect temp!", data.temp);
                 }
                 ack();
-            } catch (e) {
-                console.log(e);
-                process.exit(1);
+            } else {
+                console.log("No new events. Sleeping for 5 seconds.");
+                setTimeout(get, 5000);
             }
         } else {
-            console.log("No new events. Sleeping for 30 seconds.");
-            setTimeout(get, 30000);
+            console.log(`Broker responded with: ${response.status}. Sleeping for 1 second.`);
+            setTimeout(get, 1000);
         }
-    } else {
-        console.log(`Broker responded with: ${response.status}. Sleeping for 1 second.`);
-        setTimeout(get, 1000);
+    } catch (e) {
+        console.log(e);
+        console.log(`Broker error. Sleeping for 5 seconds.`);
+        setTimeout(get, 5000);
     }
 }
 get();
