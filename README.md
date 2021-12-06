@@ -24,6 +24,14 @@ Exploring and prototyping a custom event streaming architecture.
 -   [ ] Allow consumers to rewind
 -   [ ] Add a process to compact old logs
 -   [ ] Distributed brokers/logs
+-   [ ] Switch message UUIDs to time-ordered UUIDs
+-   [ ] Index min & max timestamps for each events file
+-   [ ] Allow observers to query events like a time series database
+    -   [ ] ranges `SELECT * IN group FROM timestamp TO timestamp`
+    -   [ ] time slices `SELECT * IN group FROM timestamp SAMPLE BY 5m`
+-   [ ] Add the ability to create groups
+-   [ ] Allow producers to push data into groups
+-   [ ] Allow consumers to "subscribe" (assign) to a group
 
 ## Technology
 
