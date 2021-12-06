@@ -20,9 +20,10 @@ Exploring and prototyping a custom event streaming architecture.
     -   [x] Custom message lengths
     -   [x] Data
 -   [ ] Allow consumers to request batched events
--   [ ] Switch all fs write OPs to BufWriter
+-   [ ] Switch all `fs` write OPs to `BufWriter`
 -   [ ] Allow consumers to rewind
 -   [ ] Add a process to compact old logs
+-   [ ] Distributed brokers/logs
 
 ## Technology
 
