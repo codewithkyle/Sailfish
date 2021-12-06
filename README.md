@@ -33,6 +33,7 @@ Exploring and prototyping a custom event streaming architecture.
 -   [ ] Allow producers to push data into groups
 -   [ ] Allow consumers to "subscribe" (assign) to a group
 -   [ ] Come up with a cleaver catchy name for this project
+-   [ ] Manually convert the `Event` struct into a response `String` (parsing the stored `json::Value` message is resouce intensive process that we should avoid)
 
 ## Technology
 
