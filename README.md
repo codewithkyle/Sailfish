@@ -32,6 +32,7 @@ Exploring and prototyping a custom event streaming architecture.
 -   [ ] Add the ability to create groups
 -   [ ] Allow producers to push data into groups
 -   [ ] Allow consumers to "subscribe" (assign) to a group
+-   [ ] Come up with a cleaver catchy name for this project
 
 ## Technology
 
