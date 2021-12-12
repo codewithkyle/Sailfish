@@ -1,6 +1,8 @@
 # Event Stream Prototype
 
-Exploring and prototyping a custom event streaming architecture.
+Prototyping an custom event streaming library written from scratch in Rust.
+
+> **Please note**: this is a hobby project created by an over caffinated bored software developer with way to much time on his hands. No one should use this in production. You will not recieve support if something breaks.
 
 ## Goals
 
@@ -20,7 +22,7 @@ Exploring and prototyping a custom event streaming architecture.
     -   [x] Custom message lengths
     -   [x] Data
 -   [ ] Allow consumers to request batched events
--   [ ] Switch all `fs` write OPs to `BufWriter`
+-   [ ] Switch all file system write OPs to `BufWriter`
 -   [ ] Allow consumers to rewind
 -   [ ] Add a process to compact old logs
 -   [ ] Distributed brokers/logs
@@ -34,6 +36,11 @@ Exploring and prototyping a custom event streaming architecture.
 -   [ ] Allow consumers to "subscribe" (assign) to a group
 -   [ ] Come up with a cleaver catchy name for this project
 -   [ ] Manually convert the `Event` struct into a response `String` (parsing the stored `json::Value` message is resouce intensive process that we should avoid)
+-   [ ] Drop actix dependency and write the server/router from scratch ([ref](https://doc.rust-lang.org/stable/book/ch20-00-final-project-a-web-server.html))
+-   [ ] Create a web interface
+    -   [ ] Manage consumers (add, remove, set group, set delivery type)
+    -   [ ] Manage producers (add, remove, set group)
+    -   [ ] Manage groups (add, remove)
 
 ## Technology
 
