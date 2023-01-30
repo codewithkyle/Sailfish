@@ -1,8 +1,8 @@
-# Event Stream Prototype
+# Sailfish
 
-Prototyping an custom event streaming library written from scratch in Rust.
+A custom event streaming service.
 
-> **Please note**: this is a hobby project created by an over caffinated bored software developer with way to much time on his hands. No one should use this in production. You will not recieve support if something breaks.
+> **Please note**: this is a hobby project. No one should use this in production. You will not recieve support if something breaks.
 
 ## Goals
 
