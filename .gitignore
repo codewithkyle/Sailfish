@@ -13,8 +13,9 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
-*.cfg
-logs/
+# Added by cargo
+/target
 
-# nodejs
-node_modules
+# Sailfish
+sailfish/
+logs/
