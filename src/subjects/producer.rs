@@ -1,37 +1,47 @@
 use std::fmt::Display;
 
-use super::keys::generate_key;
+use crate::configs::{topics::{create_topic_dir, topic_exists}, producers::add_producer_to_config};
+
+use super::{keys::generate_key, topic::Topic};
 
 pub struct Producer {
-    topic: String,
-    logFile: usize,
-    logOffset: usize,
-    offset: usize,
-    key: String,
+    pub topic: String,
+    pub log_file: usize,
+    pub log_offset: usize,
+    pub offset: u64,
+    pub key: String,
 }
 
 impl Producer {
     pub fn new(topic: String) -> Self {
-        todo!("Verify topic exists");
+        let topic = topic.to_lowercase();
+        if !topic_exists(&topic){
+            eprintln!("Topic {} has not been created yet.", topic);
+            std::process::exit(1);
+        }
+        let topic = Topic::hydrate(&topic);
         let key = generate_key();
-        todo!("Add producer to tracker file");
-        todo!("Figure out offset");
-        return Producer{
-            topic,
-            logFile: 0,
-            logOffset: 0,
+        let mut producer = Producer{
+            topic: topic.name,
+            log_file: 0,
+            log_offset: 0,
             offset: 0,
             key,
-        }
+        };
+        add_producer_to_config(&mut producer).unwrap_or_else(|_| {
+            eprintln!("Failed to create new producer.",);
+            std::process::exit(1);
+        });
+        return producer;
     }
 
-    pub fn hydrate(topic: String, offset: usize, key: String) -> Self {
+    pub fn hydrate(topic: String, offset: u64, key: String) -> Self {
         todo!("Confirm the producer is in the tracker file");
         todo!("Confirm producer has topic permission");
         return Producer{
             topic,
-            logFile: 0,
-            logOffset: 0,
+            log_file: 0,
+            log_offset: 0,
             offset,
             key,
         }

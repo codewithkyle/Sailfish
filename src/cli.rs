@@ -1,8 +1,10 @@
 mod subjects;
+mod configs;
 
 use std::str::FromStr;
-
+use std::env;
 use subjects::producer::Producer;
+use subjects::topic::Topic;
 
 enum Commands {
     Cleanup,
@@ -47,7 +49,7 @@ impl FromStr for Subject {
 }
 
 fn main(){
-    let cmd = std::env::args()
+    let cmd = env::args()
                 .nth(1)
                 .unwrap_or_else(|| {
                     eprintln!("Missing command.");
@@ -69,7 +71,7 @@ fn main(){
 }
 
 fn get_subject() -> Subject {
-    let subject = std::env::args()
+    let subject = env::args()
                     .nth(2)
                     .unwrap_or_else(|| {
                         eprintln!("Missing command subject.");
@@ -85,7 +87,7 @@ fn get_subject() -> Subject {
 }
 
 fn get_topic() -> String {
-    let topic = std::env::args()
+    let topic = env::args()
                     .nth(3)
                     .unwrap_or_else(|| {
                         eprintln!("Missing topic.");
@@ -104,7 +106,7 @@ fn add() {
     match subject {
         Subject::Producer => add_producer(),
         Subject::Consumer => todo!("add consumer"),
-        Subject::Topic => todo!("add topic"),
+        Subject::Topic => add_topic(),
     }
 }
 
@@ -112,6 +114,12 @@ fn add_producer(){
     let topic = get_topic();
     let producer = Producer::new(topic);
     println!("{}", producer);
+}
+
+fn add_topic() {
+    let topic = get_topic();
+    let topic = Topic::new(topic);
+    println!("{}", topic);
 }
 
 fn delete() {
