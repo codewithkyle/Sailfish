@@ -1,4 +1,8 @@
+mod subjects;
+
 use std::str::FromStr;
+
+use subjects::producer::Producer;
 
 enum Commands {
     Cleanup,
@@ -80,6 +84,17 @@ fn get_subject() -> Subject {
     return subject;
 }
 
+fn get_topic() -> String {
+    let topic = std::env::args()
+                    .nth(3)
+                    .unwrap_or_else(|| {
+                        eprintln!("Missing topic.");
+                        std::process::exit(1);
+                    })
+                    .to_lowercase();
+    return topic;
+}
+
 fn cleanup(){
     todo!("cleanup");
 }
@@ -87,10 +102,16 @@ fn cleanup(){
 fn add() {
     let subject = get_subject();
     match subject {
-        Subject::Producer => todo!("add producer"),
+        Subject::Producer => add_producer(),
         Subject::Consumer => todo!("add consumer"),
         Subject::Topic => todo!("add topic"),
     }
+}
+
+fn add_producer(){
+    let topic = get_topic();
+    let producer = Producer::new(topic);
+    println!("{}", producer);
 }
 
 fn delete() {
