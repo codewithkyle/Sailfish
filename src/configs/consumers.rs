@@ -1,4 +1,4 @@
-use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom}};
+use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufRead, BufReader, Read}};
 
 use crate::subjects::consumer::Consumer;
 
@@ -45,6 +45,63 @@ pub fn add_consumer_to_config(consumer: &mut Consumer) -> std::io::Result<()> {
     // Write 16 bytes of log file data (8 bytes ea)
     writer.write_all(&consumer.log_file.to_le_bytes())?;
     writer.write_all(&consumer.log_offset.to_le_bytes())?;
+
+    writer.flush()?;
+
+    return Ok(());
+}
+
+pub fn get_consumer(offset: u64) -> Result<Consumer, std::io::Error> {
+    let file = get_or_create_consumers_file();
+
+    let mut reader = BufReader::new(&file);
+    reader.seek(SeekFrom::Start(offset))?;
+
+    // Read key
+    let mut key_buffer = [0u8; 36];
+    reader.read_exact(&mut key_buffer)?;
+    let key = std::str::from_utf8(&key_buffer).unwrap();
+
+    // Read topic length
+    let mut topic_length_buffer = [0u8; 8];
+    reader.read_exact(&mut topic_length_buffer)?;
+    let topic_length:u64 = u64::from_le_bytes(topic_length_buffer);
+
+    // Read topic
+    let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
+    reader.read_exact(&mut topic_buffer[..])?;
+    let topic = std::str::from_utf8(&topic_buffer).unwrap();
+
+    // Read log file
+    let mut log_file_buffer = [0u8; 8];
+    reader.read_exact(&mut log_file_buffer)?;
+    let log_file = u64::from_le_bytes(log_file_buffer);
+
+    // Read log file offset
+    let mut log_file_offset_buffer = [0u8; 8];
+    reader.read_exact(&mut log_file_offset_buffer)?;
+    let log_offset = u64::from_le_bytes(log_file_offset_buffer);
+
+    let producer = Consumer{
+        topic: topic.to_owned(),
+        offset,
+        key: key.to_owned(),
+        log_file,
+        log_offset,
+    };
+
+    return Ok(producer);
+}
+
+pub fn delete_consumer(consumer: &Consumer) -> std::io::Result<()> {
+    let file = get_or_create_consumers_file();
+
+    let mut writer = BufWriter::new(&file);
+    writer.seek(SeekFrom::Start(consumer.offset))?;
+
+    // Overwrite key with null bytes (36)
+    let null_bytes = [0u8; 36];
+    writer.write_all(&null_bytes)?;
 
     writer.flush()?;
 

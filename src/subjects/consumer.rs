@@ -1,13 +1,13 @@
 use std::fmt::Display;
 
-use crate::configs::{topics::{create_topic_dir, topic_exists}, producers::add_producer_to_config, consumers::add_consumer_to_config};
+use crate::configs::{topics::{create_topic_dir, topic_exists}, producers::add_producer_to_config, consumers::{add_consumer_to_config, get_consumer, delete_consumer}};
 
 use super::{keys::generate_key, topic::Topic};
 
 pub struct Consumer {
     pub topic: String,
-    pub log_file: usize,
-    pub log_offset: usize,
+    pub log_file: u64,
+    pub log_offset: u64,
     pub offset: u64,
     pub key: String,
 }
@@ -35,16 +35,29 @@ impl Consumer {
         return consumer;
     }
 
-    pub fn hydrate(topic: String, offset: u64, key: String) -> Self {
-        todo!("Confirm the consumer is in the tracker file");
-        todo!("Confirm consumer has topic permission");
-        return Consumer{
-            topic,
-            log_file: 0,
-            log_offset: 0,
-            offset,
-            key,
-        }
+    pub fn hydrate(token: &String) -> Self {
+        let offset = token.split_once("-").unwrap_or_else(|| {
+            eprintln!("Invalid token format.");
+            std::process::exit(1);
+        });
+        let offset:u64 = offset.0.parse().unwrap_or_else(|_| {
+            eprintln!("Invalid token format.");
+            std::process::exit(1);
+        });
+        let producer = get_consumer(offset).unwrap_or_else(|_| {
+            eprintln!("Failed to find consumer.");
+            std::process::exit(1);
+        });
+        return producer;
+    }
+
+    pub fn delete(token: &String) -> Self {
+        let producer = Consumer::hydrate(token);
+        delete_consumer(&producer).unwrap_or_else(|_| {
+            eprintln!("Failed to delete consumer.");
+            std::process::exit(1);
+        });
+        return producer;
     }
 }
 

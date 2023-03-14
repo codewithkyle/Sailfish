@@ -146,7 +146,7 @@ fn delete() {
     let subject = get_subject();
     match subject {
         Subject::Producer => delete_producer(),
-        Subject::Consumer => todo!("delete consumer"),
+        Subject::Consumer => delete_consumer(),
         Subject::Topic => todo!("delete topic"),
     }
 }
@@ -155,6 +155,12 @@ fn delete_producer(){
     let token = get_token();
     let _ = Producer::delete(&token);
     println!("Producer {} has been deleted.", token);
+}
+
+fn delete_consumer(){
+    let token = get_token();
+    let _ = Consumer::delete(&token);
+    println!("Consumer {} has been deleted.", token);
 }
 
 fn update() {
