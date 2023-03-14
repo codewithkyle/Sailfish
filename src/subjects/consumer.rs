@@ -44,20 +44,18 @@ impl Consumer {
             eprintln!("Invalid token format.");
             std::process::exit(1);
         });
-        let producer = get_consumer(offset).unwrap_or_else(|_| {
+        let consumer = get_consumer(offset).unwrap_or_else(|_| {
             eprintln!("Failed to find consumer.");
             std::process::exit(1);
         });
-        return producer;
+        return consumer;
     }
 
-    pub fn delete(token: &String) -> Self {
-        let producer = Consumer::hydrate(token);
-        delete_consumer(&producer).unwrap_or_else(|_| {
+    pub fn delete(&self) {
+        delete_consumer(&self).unwrap_or_else(|_| {
             eprintln!("Failed to delete consumer.");
             std::process::exit(1);
         });
-        return producer;
     }
 }
 

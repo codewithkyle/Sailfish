@@ -46,13 +46,11 @@ impl Producer {
         return producer;
     }
 
-    pub fn delete(token: &String) -> Self {
-        let producer = Producer::hydrate(token);
-        delete_producer(&producer).unwrap_or_else(|_| {
+    pub fn delete(&self) {
+        delete_producer(&self).unwrap_or_else(|_| {
             eprintln!("Failed to delete producer.");
             std::process::exit(1);
         });
-        return producer;
     }
 }
 

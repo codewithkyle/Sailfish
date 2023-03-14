@@ -153,13 +153,13 @@ fn delete() {
 
 fn delete_producer(){
     let token = get_token();
-    let _ = Producer::delete(&token);
+    let _ = Producer::hydrate(&token).delete();
     println!("Producer {} has been deleted.", token);
 }
 
 fn delete_consumer(){
     let token = get_token();
-    let _ = Consumer::delete(&token);
+    let _ = Consumer::hydrate(&token).delete();
     println!("Consumer {} has been deleted.", token);
 }
 
