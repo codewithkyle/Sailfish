@@ -3,6 +3,7 @@ mod configs;
 
 use std::str::FromStr;
 use std::env;
+use subjects::consumer::Consumer;
 use subjects::producer::Producer;
 use subjects::topic::Topic;
 
@@ -105,9 +106,15 @@ fn add() {
     let subject = get_subject();
     match subject {
         Subject::Producer => add_producer(),
-        Subject::Consumer => todo!("add consumer"),
+        Subject::Consumer => add_consumer(),
         Subject::Topic => add_topic(),
     }
+}
+
+fn add_consumer() {
+    let topic = get_topic();
+    let consumer = Consumer::new(topic);
+    println!("{}", consumer);
 }
 
 fn add_producer(){
