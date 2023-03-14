@@ -37,14 +37,11 @@ pub fn add_producer_to_config(producer: &mut Producer) -> std::io::Result<()> {
     // It will always be 36 bytes
     writer.write_all(producer.key.as_bytes())?;
 
+    // Write topic & string length
     let topic_bytes = producer.topic.as_bytes();
     let topic_length = topic_bytes.len() as u64;
     writer.write_all(&topic_length.to_le_bytes())?;
     writer.write_all(topic_bytes)?;
-
-    // Write 16 bytes of log file data (8 bytes ea)
-    writer.write_all(&producer.log_file.to_le_bytes())?;
-    writer.write_all(&producer.log_offset.to_le_bytes())?;
 
     writer.flush()?;
 
@@ -72,22 +69,10 @@ pub fn get_producer(offset: u64) -> Result<Producer, std::io::Error> {
     reader.read_exact(&mut topic_buffer[..])?;
     let topic = std::str::from_utf8(&topic_buffer).unwrap();
 
-    // Read log file
-    let mut log_file_buffer = [0u8; 8];
-    reader.read_exact(&mut log_file_buffer)?;
-    let log_file = u64::from_le_bytes(log_file_buffer);
-
-    // Read log file offset
-    let mut log_file_offset_buffer = [0u8; 8];
-    reader.read_exact(&mut log_file_offset_buffer)?;
-    let log_offset = u64::from_le_bytes(log_file_offset_buffer);
-
     let producer = Producer{
         topic: topic.to_owned(),
         offset,
         key: key.to_owned(),
-        log_file,
-        log_offset,
     };
 
     return Ok(producer);

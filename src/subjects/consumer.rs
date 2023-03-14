@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::configs::{topics::{create_topic_dir, topic_exists}, producers::add_producer_to_config, consumers::{add_consumer_to_config, get_consumer, delete_consumer}};
+use crate::configs::{topics::{topic_exists}, consumers::{add_consumer_to_config, get_consumer, delete_consumer}};
 
 use super::{keys::generate_key, topic::Topic};
 

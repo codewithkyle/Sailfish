@@ -1,13 +1,11 @@
 use std::fmt::Display;
 
-use crate::configs::{topics::{create_topic_dir, topic_exists}, producers::{add_producer_to_config, get_producer, delete_producer}};
+use crate::configs::{topics::{topic_exists}, producers::{add_producer_to_config, get_producer, delete_producer}};
 
 use super::{keys::generate_key, topic::Topic};
 
 pub struct Producer {
     pub topic: String,
-    pub log_file: u64,
-    pub log_offset: u64,
     pub offset: u64,
     pub key: String,
 }
@@ -22,8 +20,6 @@ impl Producer {
         let key = generate_key();
         let mut producer = Producer{
             topic: topic.name,
-            log_file: 0,
-            log_offset: 0,
             offset: 0,
             key,
         };

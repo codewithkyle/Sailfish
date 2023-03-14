@@ -83,7 +83,7 @@ pub fn get_topic_from_config(topic: &mut Topic) -> std::io::Result<()> {
 
     loop {
         // Read & parse name length from buffer (8 bytes)
-        let mut name_length_buffer: [u8; 8] = [0; 8];
+        let mut name_length_buffer = [0u8; 8];
         reader.read_exact(&mut name_length_buffer)?;
 
         // EOF
@@ -94,25 +94,25 @@ pub fn get_topic_from_config(topic: &mut Topic) -> std::io::Result<()> {
         let name_length:u64 = u64::from_le_bytes(name_length_buffer);
 
         // Read & parse name from buffer (??? bytes)
-        let mut name_buffer:Vec<u8> = vec![0; name_length as usize];
+        let mut name_buffer:Vec<u8> = vec![0u8; name_length as usize];
         reader.read_exact(&mut name_buffer[..])?;
         let name = std::str::from_utf8(&name_buffer).unwrap_or("failed");
 
         if name == &topic.name{
             // Read & parse first log file
-            let mut first_log_buffer: [u8; 8] = [0; 8];
+            let mut first_log_buffer = [0u8; 8];
             reader.read_exact(&mut first_log_buffer)?;
             topic.first_log_file = u64::from_le_bytes(first_log_buffer);
 
             // Read & parse current log file
-            let mut curr_log_buffer: [u8; 8] = [0; 8];
+            let mut curr_log_buffer = [0u8; 8];
             reader.read_exact(&mut curr_log_buffer)?;
             topic.curr_log_file = u64::from_le_bytes(curr_log_buffer);
             
             break;
         }
 
-        // Skip the next 16 bytes
+        // Skip the next 16 bytes (2x 8 byte file info)
         reader.seek_relative(16)?;
     }
     

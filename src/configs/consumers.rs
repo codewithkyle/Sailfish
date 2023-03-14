@@ -1,4 +1,4 @@
-use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufRead, BufReader, Read}};
+use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
 
 use crate::subjects::consumer::Consumer;
 
