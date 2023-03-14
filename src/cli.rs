@@ -28,6 +28,8 @@ impl FromStr for Commands {
         match cmd {
             "cleanup" => return Ok(Commands::Cleanup),
             "add" => return Ok(Commands::Add),
+            "create" => return Ok(Commands::Add),
+            "remove" => return Ok(Commands::Delete),
             "delete" => return Ok(Commands::Delete),
             "reroll" => return Ok(Commands::Reroll),
             "update" => return Ok(Commands::Update),
@@ -98,6 +100,17 @@ fn get_topic() -> String {
     return topic;
 }
 
+fn get_token() -> String {
+    let token = env::args()
+                    .nth(3)
+                    .unwrap_or_else(|| {
+                        eprintln!("Missing token.");
+                        std::process::exit(1);
+                    })
+                    .to_lowercase();
+    return token;
+}
+
 fn cleanup(){
     todo!("cleanup");
 }
@@ -132,10 +145,16 @@ fn add_topic() {
 fn delete() {
     let subject = get_subject();
     match subject {
-        Subject::Producer => todo!("delete producer"),
+        Subject::Producer => delete_producer(),
         Subject::Consumer => todo!("delete consumer"),
         Subject::Topic => todo!("delete topic"),
     }
+}
+
+fn delete_producer(){
+    let token = get_token();
+    let _ = Producer::delete(&token);
+    println!("Producer {} has been deleted.", token);
 }
 
 fn update() {

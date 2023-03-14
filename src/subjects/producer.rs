@@ -1,20 +1,19 @@
 use std::fmt::Display;
 
-use crate::configs::{topics::{create_topic_dir, topic_exists}, producers::add_producer_to_config};
+use crate::configs::{topics::{create_topic_dir, topic_exists}, producers::{add_producer_to_config, get_producer, delete_producer}};
 
 use super::{keys::generate_key, topic::Topic};
 
 pub struct Producer {
     pub topic: String,
-    pub log_file: usize,
-    pub log_offset: usize,
+    pub log_file: u64,
+    pub log_offset: u64,
     pub offset: u64,
     pub key: String,
 }
 
 impl Producer {
     pub fn new(topic: String) -> Self {
-        let topic = topic.to_lowercase();
         if !topic_exists(&topic){
             eprintln!("Topic {} has not been created yet.", topic);
             std::process::exit(1);
@@ -35,16 +34,29 @@ impl Producer {
         return producer;
     }
 
-    pub fn hydrate(topic: String, offset: u64, key: String) -> Self {
-        todo!("Confirm the producer is in the tracker file");
-        todo!("Confirm producer has topic permission");
-        return Producer{
-            topic,
-            log_file: 0,
-            log_offset: 0,
-            offset,
-            key,
-        }
+    pub fn hydrate(token: &String) -> Self {
+        let offset = token.split_once("-").unwrap_or_else(|| {
+            eprintln!("Invalid token format.");
+            std::process::exit(1);
+        });
+        let offset:u64 = offset.0.parse().unwrap_or_else(|_| {
+            eprintln!("Invalid token format.");
+            std::process::exit(1);
+        });
+        let producer = get_producer(offset).unwrap_or_else(|_| {
+            eprintln!("Failed to find producer.");
+            std::process::exit(1);
+        });
+        return producer;
+    }
+
+    pub fn delete(token: &String) -> Self {
+        let producer = Producer::hydrate(token);
+        delete_producer(&producer).unwrap_or_else(|_| {
+            eprintln!("Failed to delete producer.");
+            std::process::exit(1);
+        });
+        return producer;
     }
 }
 
