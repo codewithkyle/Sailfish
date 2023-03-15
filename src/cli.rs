@@ -147,7 +147,7 @@ fn delete() {
     match subject {
         Subject::Producer => delete_producer(),
         Subject::Consumer => delete_consumer(),
-        Subject::Topic => todo!("delete topic"),
+        Subject::Topic => delete_topic(),
     }
 }
 
@@ -161,6 +161,12 @@ fn delete_consumer(){
     let token = get_token();
     let _ = Consumer::hydrate(&token).delete();
     println!("Consumer {} has been deleted.", token);
+}
+
+fn delete_topic(){
+    let topic = get_topic();
+    let _ = Topic::hydrate(&topic).delete();
+    println!("Topic {} has been deleted.", topic);
 }
 
 fn update() {

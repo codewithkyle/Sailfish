@@ -80,17 +80,12 @@ pub fn get_topic_from_config(topic: &mut Topic) -> std::io::Result<()> {
     let file = get_or_create_topics_file();
 
     let mut reader = BufReader::new(&file);
+    reader.seek(SeekFrom::Start(0))?;
 
     loop {
         // Read & parse name length from buffer (8 bytes)
         let mut name_length_buffer = [0u8; 8];
         reader.read_exact(&mut name_length_buffer)?;
-
-        // EOF
-        if name_length_buffer.len() == 0 {
-            todo!("Replace with anyhow error");
-        }
-
         let name_length:u64 = u64::from_le_bytes(name_length_buffer);
 
         // Read & parse name from buffer (??? bytes)
@@ -113,8 +108,64 @@ pub fn get_topic_from_config(topic: &mut Topic) -> std::io::Result<()> {
         }
 
         // Skip the next 16 bytes (2x 8 byte file info)
-        reader.seek_relative(16)?;
+        reader.seek(SeekFrom::Current(16))?;
     }
     
+    return Ok(());
+}
+
+pub fn delete_topic(topic: &Topic) -> std::io::Result<()> {
+    let file = get_or_create_topics_file();
+
+    let mut reader = BufReader::new(&file);
+    reader.seek(SeekFrom::Start(0))?;
+
+    let mut bytes_read = 0;
+
+    loop {
+        // Read & parse name length from buffer (8 bytes)
+        let mut name_length_buffer = [0u8; 8];
+        reader.read_exact(&mut name_length_buffer)?;
+        let name_length:u64 = u64::from_le_bytes(name_length_buffer);
+
+        // Read & parse name from buffer (??? bytes)
+        let mut name_buffer:Vec<u8> = vec![0u8; name_length as usize];
+        reader.read_exact(&mut name_buffer[..])?;
+        let name = std::str::from_utf8(&name_buffer).unwrap_or("failed");
+
+        // Calc total bytes for this topic
+        let topic_bytes:i64 = 16 + 8 + name_length as i64;
+
+        if name == &topic.name{
+            let mut start_buffer:Vec<u8> = vec![0; bytes_read];
+
+            // Read everything from start until topic into buffer
+            reader.seek(SeekFrom::Start(0))?;
+            reader.read_exact(&mut start_buffer)?;
+
+            // Skip dead (this) topic
+            reader.seek(SeekFrom::Current(topic_bytes))?;
+
+            let mut end_buffer:Vec<u8> = vec![];
+            reader.read_to_end(&mut end_buffer)?;
+
+            // Write buffers
+            let mut writer = BufWriter::new(&file);
+            writer.seek(SeekFrom::Start(0))?;
+            writer.write_all(&mut start_buffer[..])?;
+            writer.write_all(&mut end_buffer[..])?;
+
+            // Truncate file to correct size
+            file.set_len(start_buffer.len() as u64 + end_buffer.len() as u64)?;
+
+            break;
+        }
+
+        // Skip the next 16 bytes (2x 8 byte file info)
+        reader.seek(SeekFrom::Current(16))?;
+
+        bytes_read += topic_bytes as usize;
+    }
+
     return Ok(());
 }

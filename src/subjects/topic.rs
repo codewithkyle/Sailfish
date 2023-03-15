@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::configs::topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config};
+use crate::configs::topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic};
 
 pub struct Topic {
     pub name: String,
@@ -43,6 +43,13 @@ impl Topic {
             std::process::exit(1);
         });
         return topic;
+    }
+
+    pub fn delete(&self) {
+        delete_topic(&self).unwrap_or_else(|e| {
+            eprintln!("Failed to delete topic {}: {}.", &self.name, e);
+            std::process::exit(1);
+        });
     }
 }
 
