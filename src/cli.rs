@@ -3,6 +3,7 @@ mod configs;
 
 use std::str::FromStr;
 use std::env;
+use configs::producers::list_producers;
 use subjects::consumer::Consumer;
 use subjects::producer::Producer;
 use subjects::topic::Topic;
@@ -14,6 +15,7 @@ enum Commands {
     Reroll,
     Update,
     Stat,
+    List,
 }
 
 enum Subject {
@@ -35,6 +37,7 @@ impl FromStr for Commands {
             "reroll" => return Ok(Commands::Reroll),
             "update" => return Ok(Commands::Update),
             "stat" => return Ok(Commands::Stat),
+            "list" => return Ok(Commands::List),
             _ => Err("Invalid command.".to_string()),
         }    
     }
@@ -48,6 +51,9 @@ impl FromStr for Subject {
             "producer" => return Ok(Subject::Producer),
             "consumer" => return Ok(Subject::Consumer),
             "topic" => return Ok(Subject::Topic),
+            "producers" => return Ok(Subject::Producer),
+            "consumers" => return Ok(Subject::Consumer),
+            "topics" => return Ok(Subject::Topic),
             _ => Err("Invalid command subject.".to_string()),
         }    
     }
@@ -73,6 +79,7 @@ fn main(){
         Commands::Update => update(),
         Commands::Reroll => reroll(),
         Commands::Stat => stat_subject(),
+        Commands::List => list_subject(),
     }
 }
 
@@ -240,3 +247,14 @@ fn stat_topic(){
     println!("{}", topic);
 }
 
+fn list_subject(){
+    let subject = get_subject();
+    match subject {
+        Subject::Producer => list_producers().unwrap_or_else(|e|{
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }),
+        Subject::Consumer => todo!("list consumer"),
+        Subject::Topic => todo!("list topic"),
+    }
+}
