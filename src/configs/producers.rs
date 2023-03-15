@@ -1,6 +1,6 @@
 use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
 
-use crate::subjects::producer::{Producer};
+use crate::subjects::{producer::{Producer}, keys::generate_key};
 
 fn create_configs_dir(){
     let path = Path::new("sailfish/configs");
@@ -91,4 +91,17 @@ pub fn delete_producer(producer: &Producer) -> std::io::Result<()> {
     writer.flush()?;
 
     return Ok(());
+}
+
+pub fn reroll_producer_key(producer: &Producer) -> std::io::Result<String> {
+    let file = get_or_create_producers_file();
+
+    let mut writer = BufWriter::new(&file);
+    writer.seek(SeekFrom::Start(producer.offset))?;
+
+
+    let new_key = generate_key();
+    writer.write_all(new_key.as_bytes())?;
+
+    return Ok(new_key);
 }

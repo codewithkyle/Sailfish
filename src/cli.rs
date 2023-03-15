@@ -153,19 +153,19 @@ fn delete() {
 
 fn delete_producer(){
     let token = get_token();
-    let _ = Producer::hydrate(&token).delete();
+    Producer::hydrate(&token).delete();
     println!("Producer {} has been deleted.", token);
 }
 
 fn delete_consumer(){
     let token = get_token();
-    let _ = Consumer::hydrate(&token).delete();
+    Consumer::hydrate(&token).delete();
     println!("Consumer {} has been deleted.", token);
 }
 
 fn delete_topic(){
     let topic = get_topic();
-    let _ = Topic::hydrate(&topic).delete();
+    Topic::hydrate(&topic).delete();
     println!("Topic {} has been deleted.", topic);
 }
 
@@ -187,7 +187,7 @@ fn update() {
 fn reroll() {
     let subject = get_subject();
     match subject {
-        Subject::Producer => todo!("reroll producer"),
+        Subject::Producer => reroll_producer(),
         Subject::Consumer => todo!("reroll consumer"),
         Subject::Topic => {
             eprintln!("Topics cannot be rerolled.");
@@ -195,3 +195,11 @@ fn reroll() {
         },
     }
 }
+
+fn reroll_producer(){
+    let token = get_token();
+    let mut producer = Producer::hydrate(&token);
+    producer.reroll();
+    println!("{}", producer);
+}
+

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::configs::{topics::{topic_exists}, producers::{add_producer_to_config, get_producer, delete_producer}};
+use crate::configs::{topics::{topic_exists}, producers::{add_producer_to_config, get_producer, delete_producer, reroll_producer_key}};
 
 use super::{keys::generate_key, topic::Topic};
 
@@ -51,6 +51,14 @@ impl Producer {
             eprintln!("Failed to delete producer.");
             std::process::exit(1);
         });
+    }
+
+    pub fn reroll(&mut self) {
+        let new_key = reroll_producer_key(&self).unwrap_or_else(|_| {
+            eprintln!("Failed to generate new producer key.");
+            std::process::exit(1);
+        });
+        self.key = new_key;
     }
 }
 
