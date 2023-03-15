@@ -2,6 +2,8 @@
 
 A high-performance HTTP based durable event queue built for resource restricted environments.
 
+> **Note**: this project is still under development. [Track the progress here](https://github.com/users/codewithkyle/projects/2/views/1).
+
 ## Installation
 
 TBD
