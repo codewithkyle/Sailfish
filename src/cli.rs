@@ -5,6 +5,7 @@ use std::str::FromStr;
 use std::env;
 use configs::consumers::list_consumers;
 use configs::producers::list_producers;
+use configs::topics::list_topics;
 use subjects::consumer::Consumer;
 use subjects::producer::Producer;
 use subjects::topic::Topic;
@@ -259,6 +260,9 @@ fn list_subject(){
             eprintln!("{}", e);
             std::process::exit(1);
         }),
-        Subject::Topic => todo!("list topic"),
+        Subject::Topic => list_topics().unwrap_or_else(|e|{
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }),
     }
 }

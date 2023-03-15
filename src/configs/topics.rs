@@ -180,3 +180,51 @@ pub fn delete_topic(topic: &Topic) -> std::io::Result<()> {
 
     return Ok(());
 }
+
+pub fn list_topics() -> std::io::Result<()> {
+    let file = get_or_create_topics_file();
+
+    let mut reader = BufReader::new(&file);
+    reader.seek(SeekFrom::Start(0))?;
+
+    let total_bytes = file.metadata()?.len();
+    let mut bytes_read = 0;
+
+    loop {
+        if bytes_read == total_bytes {
+            break;
+        }
+
+        // Read & parse name length from buffer (8 bytes)
+        let mut name_length_buffer = [0u8; 8];
+        reader.read_exact(&mut name_length_buffer)?;
+        let name_length:u64 = u64::from_be_bytes(name_length_buffer);
+
+        // Read & parse name from buffer (??? bytes)
+        let mut name_buffer:Vec<u8> = vec![0u8; name_length as usize];
+        reader.read_exact(&mut name_buffer[..])?;
+        let name = std::str::from_utf8(&name_buffer).unwrap_or("failed");
+        let name = String::from(name);
+
+        // Read & parse first log file
+        let mut first_log_buffer = [0u8; 8];
+        reader.read_exact(&mut first_log_buffer)?;
+        let first_log_file = u64::from_be_bytes(first_log_buffer);
+
+        // Read & parse current log file
+        let mut curr_log_buffer = [0u8; 8];
+        reader.read_exact(&mut curr_log_buffer)?;
+        let curr_log_file = u64::from_be_bytes(curr_log_buffer);
+
+        let topic = Topic{
+            name,
+            first_log_file,
+            curr_log_file,
+        };
+        println!("{}", topic);
+
+        bytes_read += 8 + name_length + 16;
+    }
+
+    return Ok(());
+}
