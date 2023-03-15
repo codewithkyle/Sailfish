@@ -1,6 +1,6 @@
 # Sailfish
 
-A high-performance event streaming service.
+A high-performance HTTP based durable event queue built for resource restricted environments.
 
 ## Installation
 
