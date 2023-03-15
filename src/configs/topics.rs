@@ -14,6 +14,17 @@ pub fn create_topic_dir(topic: &str) {
     create_topic_file(topic, 0);
 }
 
+pub fn delete_topic_dir(topic: &str) {
+    let path = format!("sailfish/logs/{}", topic);
+    let path = Path::new(&path);
+    if path.exists() {
+        fs::remove_dir_all(path).unwrap_or_else(|_| {
+            eprintln!("Failed to delete {} logs.", topic);
+            std::process::exit(1);
+        });
+    }
+}
+
 fn create_topic_file(topic: &str, file: usize) {
     let path = format!("sailfish/logs/{}/{}", topic, file);
     let path = Path::new(&path);
