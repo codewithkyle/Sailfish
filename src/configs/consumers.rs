@@ -1,6 +1,6 @@
 use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
 
-use crate::subjects::consumer::Consumer;
+use crate::subjects::{consumer::Consumer, keys::generate_key};
 
 fn create_configs_dir(){
     let path = Path::new("sailfish/configs");
@@ -34,7 +34,7 @@ pub fn add_consumer_to_config(consumer: &mut Consumer) -> std::io::Result<()> {
     writer.seek(SeekFrom::Start(consumer.offset))?;
 
     // We don't need to track the length of the key because it is a UUIDv4
-    // It will always be 16 bytes
+    // It will always be 36 bytes
     writer.write_all(consumer.key.as_bytes())?;
 
     let topic_bytes = consumer.topic.as_bytes();
@@ -106,4 +106,17 @@ pub fn delete_consumer(consumer: &Consumer) -> std::io::Result<()> {
     writer.flush()?;
 
     return Ok(());
+}
+
+pub fn reroll_consumer_key(consumer: &Consumer) -> std::io::Result<String> {
+    let file = get_or_create_consumers_file();
+
+    let mut writer = BufWriter::new(&file);
+    writer.seek(SeekFrom::Start(consumer.offset))?;
+
+
+    let new_key = generate_key();
+    writer.write_all(new_key.as_bytes())?;
+
+    return Ok(new_key);
 }

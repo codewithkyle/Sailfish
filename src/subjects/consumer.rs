@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::configs::{topics::{topic_exists}, consumers::{add_consumer_to_config, get_consumer, delete_consumer}};
+use crate::configs::{topics::{topic_exists}, consumers::{add_consumer_to_config, get_consumer, delete_consumer, reroll_consumer_key}};
 
 use super::{keys::generate_key, topic::Topic};
 
@@ -56,6 +56,14 @@ impl Consumer {
             eprintln!("Failed to delete consumer.");
             std::process::exit(1);
         });
+    }
+
+    pub fn reroll(&mut self) {
+        let new_key = reroll_consumer_key(&self).unwrap_or_else(|_| {
+            eprintln!("Failed to generate new consumer key.");
+            std::process::exit(1);
+        });
+        self.key = new_key;
     }
 }
 

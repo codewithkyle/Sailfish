@@ -188,7 +188,7 @@ fn reroll() {
     let subject = get_subject();
     match subject {
         Subject::Producer => reroll_producer(),
-        Subject::Consumer => todo!("reroll consumer"),
+        Subject::Consumer => reroll_consumer(),
         Subject::Topic => {
             eprintln!("Topics cannot be rerolled.");
             std::process::exit(1);
@@ -203,3 +203,9 @@ fn reroll_producer(){
     println!("{}", producer);
 }
 
+fn reroll_consumer(){
+    let token = get_token();
+    let mut consumer = Consumer::hydrate(&token);
+    consumer.reroll();
+    println!("{}", consumer);
+}
