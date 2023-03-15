@@ -120,3 +120,59 @@ pub fn reroll_consumer_key(consumer: &Consumer) -> std::io::Result<String> {
 
     return Ok(new_key);
 }
+
+pub fn list_consumers() -> std::io::Result<()> {
+    let file = get_or_create_consumers_file();
+
+    let mut reader = BufReader::new(&file);
+    reader.seek(SeekFrom::Start(0))?;
+
+    let total_bytes = file.metadata()?.len();
+    let mut bytes_read = 0;
+
+    loop {
+        if bytes_read == total_bytes {
+            break;
+        }
+
+        // Read key
+        let mut key_buffer = [0u8; 36];
+        reader.read_exact(&mut key_buffer)?;
+        let key = std::str::from_utf8(&key_buffer).unwrap();
+
+        // Read topic length
+        let mut topic_length_buffer = [0u8; 8];
+        reader.read_exact(&mut topic_length_buffer)?;
+        let topic_length:u64 = u64::from_be_bytes(topic_length_buffer);
+
+        // Read topic
+        let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
+        reader.read_exact(&mut topic_buffer[..])?;
+        let topic = std::str::from_utf8(&topic_buffer).unwrap();
+
+        // Read log file
+        let mut log_file_buffer = [0u8; 8];
+        reader.read_exact(&mut log_file_buffer)?;
+        let log_file = u64::from_be_bytes(log_file_buffer);
+
+        // Read log file offset
+        let mut log_file_offset_buffer = [0u8; 8];
+        reader.read_exact(&mut log_file_offset_buffer)?;
+        let log_offset = u64::from_be_bytes(log_file_offset_buffer);
+
+        if !key.escape_default().to_string().contains("\\u{0}") {
+            let producer = Consumer{
+                topic: topic.to_owned(),
+                offset: bytes_read,
+                key: key.to_owned(),
+                log_file,
+                log_offset,
+            };
+            println!("{}", producer);
+        }
+
+        bytes_read += 36 + 8 + topic_length + 16;
+    }
+
+    return Ok(());
+}

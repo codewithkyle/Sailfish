@@ -3,6 +3,7 @@ mod configs;
 
 use std::str::FromStr;
 use std::env;
+use configs::consumers::list_consumers;
 use configs::producers::list_producers;
 use subjects::consumer::Consumer;
 use subjects::producer::Producer;
@@ -254,7 +255,10 @@ fn list_subject(){
             eprintln!("{}", e);
             std::process::exit(1);
         }),
-        Subject::Consumer => todo!("list consumer"),
+        Subject::Consumer => list_consumers().unwrap_or_else(|e|{
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }),
         Subject::Topic => todo!("list topic"),
     }
 }
