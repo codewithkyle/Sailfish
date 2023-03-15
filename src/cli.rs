@@ -13,6 +13,7 @@ enum Commands {
     Delete,
     Reroll,
     Update,
+    Stat,
 }
 
 enum Subject {
@@ -33,6 +34,7 @@ impl FromStr for Commands {
             "delete" => return Ok(Commands::Delete),
             "reroll" => return Ok(Commands::Reroll),
             "update" => return Ok(Commands::Update),
+            "stat" => return Ok(Commands::Stat),
             _ => Err("Invalid command.".to_string()),
         }    
     }
@@ -70,6 +72,7 @@ fn main(){
         Commands::Delete => delete(),
         Commands::Update => update(),
         Commands::Reroll => reroll(),
+        Commands::Stat => stat_subject(),
     }
 }
 
@@ -209,3 +212,31 @@ fn reroll_consumer(){
     consumer.reroll();
     println!("{}", consumer);
 }
+
+fn stat_subject() {
+    let subject = get_subject();
+    match subject {
+        Subject::Producer => stat_producer(),
+        Subject::Consumer => stat_consumer(),
+        Subject::Topic => stat_topic(),
+    }
+}
+
+fn stat_producer(){
+    let token = get_token();
+    let producer = Producer::hydrate(&token);
+    println!("{}", producer);
+}
+
+fn stat_consumer(){
+    let token = get_token();
+    let consumer = Consumer::hydrate(&token);
+    println!("{}", consumer);
+}
+
+fn stat_topic(){
+    let topic = get_topic();
+    let topic = Topic::hydrate(&topic);
+    println!("{}", topic);
+}
+
