@@ -39,12 +39,12 @@ pub fn add_consumer_to_config(consumer: &mut Consumer) -> std::io::Result<()> {
 
     let topic_bytes = consumer.topic.as_bytes();
     let topic_length = topic_bytes.len() as u64;
-    writer.write_all(&topic_length.to_le_bytes())?;
+    writer.write_all(&topic_length.to_be_bytes())?;
     writer.write_all(topic_bytes)?;
 
     // Write 16 bytes of log file data (8 bytes ea)
-    writer.write_all(&consumer.log_file.to_le_bytes())?;
-    writer.write_all(&consumer.log_offset.to_le_bytes())?;
+    writer.write_all(&consumer.log_file.to_be_bytes())?;
+    writer.write_all(&consumer.log_offset.to_be_bytes())?;
 
     writer.flush()?;
 
@@ -65,7 +65,7 @@ pub fn get_consumer(offset: u64) -> Result<Consumer, std::io::Error> {
     // Read topic length
     let mut topic_length_buffer = [0u8; 8];
     reader.read_exact(&mut topic_length_buffer)?;
-    let topic_length:u64 = u64::from_le_bytes(topic_length_buffer);
+    let topic_length:u64 = u64::from_be_bytes(topic_length_buffer);
 
     // Read topic
     let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
@@ -75,12 +75,12 @@ pub fn get_consumer(offset: u64) -> Result<Consumer, std::io::Error> {
     // Read log file
     let mut log_file_buffer = [0u8; 8];
     reader.read_exact(&mut log_file_buffer)?;
-    let log_file = u64::from_le_bytes(log_file_buffer);
+    let log_file = u64::from_be_bytes(log_file_buffer);
 
     // Read log file offset
     let mut log_file_offset_buffer = [0u8; 8];
     reader.read_exact(&mut log_file_offset_buffer)?;
-    let log_offset = u64::from_le_bytes(log_file_offset_buffer);
+    let log_offset = u64::from_be_bytes(log_file_offset_buffer);
 
     let producer = Consumer{
         topic: topic.to_owned(),

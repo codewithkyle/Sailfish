@@ -75,12 +75,12 @@ pub fn add_topic_to_config(topic: &Topic) -> std::io::Result<()> {
     // Write topic name to file
     let topic_bytes = topic.name.as_bytes();
     let topic_length = topic_bytes.len() as u64;
-    writer.write_all(&topic_length.to_le_bytes())?; // 8 bytes
+    writer.write_all(&topic_length.to_be_bytes())?; // 8 bytes
     writer.write_all(topic_bytes)?;
 
     // Write file info (8 bytes ea)
-    writer.write_all(&topic.first_log_file.to_le_bytes())?;
-    writer.write_all(&topic.curr_log_file.to_le_bytes())?;
+    writer.write_all(&topic.first_log_file.to_be_bytes())?;
+    writer.write_all(&topic.curr_log_file.to_be_bytes())?;
 
     writer.flush()?;
 
@@ -97,7 +97,7 @@ pub fn get_topic_from_config(topic: &mut Topic) -> std::io::Result<()> {
         // Read & parse name length from buffer (8 bytes)
         let mut name_length_buffer = [0u8; 8];
         reader.read_exact(&mut name_length_buffer)?;
-        let name_length:u64 = u64::from_le_bytes(name_length_buffer);
+        let name_length:u64 = u64::from_be_bytes(name_length_buffer);
 
         // Read & parse name from buffer (??? bytes)
         let mut name_buffer:Vec<u8> = vec![0u8; name_length as usize];
@@ -108,12 +108,12 @@ pub fn get_topic_from_config(topic: &mut Topic) -> std::io::Result<()> {
             // Read & parse first log file
             let mut first_log_buffer = [0u8; 8];
             reader.read_exact(&mut first_log_buffer)?;
-            topic.first_log_file = u64::from_le_bytes(first_log_buffer);
+            topic.first_log_file = u64::from_be_bytes(first_log_buffer);
 
             // Read & parse current log file
             let mut curr_log_buffer = [0u8; 8];
             reader.read_exact(&mut curr_log_buffer)?;
-            topic.curr_log_file = u64::from_le_bytes(curr_log_buffer);
+            topic.curr_log_file = u64::from_be_bytes(curr_log_buffer);
             
             break;
         }
@@ -137,7 +137,7 @@ pub fn delete_topic(topic: &Topic) -> std::io::Result<()> {
         // Read & parse name length from buffer (8 bytes)
         let mut name_length_buffer = [0u8; 8];
         reader.read_exact(&mut name_length_buffer)?;
-        let name_length:u64 = u64::from_le_bytes(name_length_buffer);
+        let name_length:u64 = u64::from_be_bytes(name_length_buffer);
 
         // Read & parse name from buffer (??? bytes)
         let mut name_buffer:Vec<u8> = vec![0u8; name_length as usize];

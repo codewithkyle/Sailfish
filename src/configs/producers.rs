@@ -40,7 +40,7 @@ pub fn add_producer_to_config(producer: &mut Producer) -> std::io::Result<()> {
     // Write topic & string length
     let topic_bytes = producer.topic.as_bytes();
     let topic_length = topic_bytes.len() as u64;
-    writer.write_all(&topic_length.to_le_bytes())?;
+    writer.write_all(&topic_length.to_be_bytes())?;
     writer.write_all(topic_bytes)?;
 
     writer.flush()?;
@@ -62,7 +62,7 @@ pub fn get_producer(offset: u64) -> Result<Producer, std::io::Error> {
     // Read topic length
     let mut topic_length_buffer = [0u8; 8];
     reader.read_exact(&mut topic_length_buffer)?;
-    let topic_length:u64 = u64::from_le_bytes(topic_length_buffer);
+    let topic_length:u64 = u64::from_be_bytes(topic_length_buffer);
 
     // Read topic
     let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
