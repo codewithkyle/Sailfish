@@ -1,3 +1,7 @@
+<p align="center">
+  <img alt="sailfish logo" src="https://user-images.githubusercontent.com/15202776/225697528-39256a11-25ca-4eac-b7c0-8f80b001530d.png">
+</p>
+
 # Sailfish
 
 A high-performance HTTP based durable event queue built for resource restricted environments.
