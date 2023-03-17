@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::configs::{topics::{topic_exists}, consumers::{add_consumer_to_config, get_consumer, delete_consumer, reroll_consumer_key}};
+use crate::{configs::{topics::{topic_exists}, consumers::{add_consumer_to_config, get_consumer, delete_consumer, reroll_consumer_key}}, output_error};
 
 use super::{keys::generate_key, topic::Topic};
 
@@ -16,7 +16,7 @@ impl Consumer {
     pub fn new(topic: String) -> Self {
         let topic = topic.to_lowercase();
         if !topic_exists(&topic){
-            eprintln!("Topic {} has not been created yet.", topic);
+            output_error(&format!("Topic {} has not been created yet.", topic));
             std::process::exit(1);
         }
         let topic = Topic::hydrate(&topic);
@@ -29,7 +29,7 @@ impl Consumer {
             key,
         };
         add_consumer_to_config(&mut consumer).unwrap_or_else(|_| {
-            eprintln!("Failed to create new consumer.",);
+            output_error("Failed to create new consumer.",);
             std::process::exit(1);
         });
         return consumer;
@@ -37,15 +37,15 @@ impl Consumer {
 
     pub fn hydrate(token: &String) -> Self {
         let offset = token.split_once("-").unwrap_or_else(|| {
-            eprintln!("Invalid token format.");
+            output_error("Invalid token format.");
             std::process::exit(1);
         });
         let offset:u64 = offset.0.parse().unwrap_or_else(|_| {
-            eprintln!("Invalid token format.");
+            output_error("Invalid token format.");
             std::process::exit(1);
         });
         let consumer = get_consumer(offset).unwrap_or_else(|_| {
-            eprintln!("Failed to find consumer.");
+            output_error("Failed to find consumer.");
             std::process::exit(1);
         });
         return consumer;
@@ -53,14 +53,14 @@ impl Consumer {
 
     pub fn delete(&self) {
         delete_consumer(&self).unwrap_or_else(|_| {
-            eprintln!("Failed to delete consumer.");
+            output_error("Failed to delete consumer.");
             std::process::exit(1);
         });
     }
 
     pub fn reroll(&mut self) {
         let new_key = reroll_consumer_key(&self).unwrap_or_else(|_| {
-            eprintln!("Failed to generate new consumer key.");
+            output_error("Failed to generate new consumer key.");
             std::process::exit(1);
         });
         self.key = new_key;
@@ -69,7 +69,7 @@ impl Consumer {
 
 impl Display for Consumer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        return write!(f, "Consumer({}, {})", self.topic, self.assemble_token());
+        return write!(f, "{{ \"topic\": \"{}\", \"log_file\": {}, \"log_offset\": {}, \"offset\": {}, \"key\": \"{}\" }}", self.topic, self.log_file, self.log_offset, self.offset, self.assemble_token());
     }
 }
 

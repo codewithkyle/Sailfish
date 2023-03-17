@@ -1,12 +1,12 @@
 use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
-
-use crate::subjects::{consumer::Consumer, keys::generate_key};
+use anyhow::Result;
+use crate::{subjects::{consumer::Consumer, keys::generate_key}, output_error};
 
 fn create_configs_dir(){
     let path = Path::new("sailfish/configs");
     if !path.exists() {
         fs::create_dir_all(path).unwrap_or_else(|_| {
-            eprintln!("Failed to create configs directory.");
+            output_error("Failed to create configs directory.");
             std::process::exit(1);
         });
     }
@@ -20,12 +20,12 @@ fn get_or_create_consumers_file() -> File {
             .create(true)
             .open(path)
             .unwrap_or_else(|_| {
-                eprintln!("Failed to open consumer config file.");
+                output_error("Failed to open consumer config file.");
                 std::process::exit(1);
             });
 }
 
-pub fn add_consumer_to_config(consumer: &mut Consumer) -> std::io::Result<()> {
+pub fn add_consumer_to_config(consumer: &mut Consumer) -> Result<()> {
     create_configs_dir();
     let file = get_or_create_consumers_file();
 
@@ -93,7 +93,7 @@ pub fn get_consumer(offset: u64) -> Result<Consumer, std::io::Error> {
     return Ok(producer);
 }
 
-pub fn delete_consumer(consumer: &Consumer) -> std::io::Result<()> {
+pub fn delete_consumer(consumer: &Consumer) -> Result<()> {
     let file = get_or_create_consumers_file();
 
     let mut writer = BufWriter::new(&file);
@@ -108,7 +108,7 @@ pub fn delete_consumer(consumer: &Consumer) -> std::io::Result<()> {
     return Ok(());
 }
 
-pub fn reroll_consumer_key(consumer: &Consumer) -> std::io::Result<String> {
+pub fn reroll_consumer_key(consumer: &Consumer) -> Result<String> {
     let file = get_or_create_consumers_file();
 
     let mut writer = BufWriter::new(&file);
@@ -121,7 +121,7 @@ pub fn reroll_consumer_key(consumer: &Consumer) -> std::io::Result<String> {
     return Ok(new_key);
 }
 
-pub fn list_consumers() -> std::io::Result<()> {
+pub fn list_consumers() -> Result<()> {
     let file = get_or_create_consumers_file();
 
     let mut reader = BufReader::new(&file);

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::configs::topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir};
+use crate::{configs::topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir}, output_error};
 
 pub struct Topic {
     pub name: String,
@@ -12,7 +12,7 @@ impl Topic {
     pub fn new(name: String) -> Self {
         let name = name.to_lowercase();
         if !Topic::validate(&name) {
-            eprintln!("Invalid topic name.");
+            output_error("Invalid topic name.");
             std::process::exit(1);
         }
         create_topic_dir(&name);
@@ -22,7 +22,7 @@ impl Topic {
             curr_log_file: 0,
         };
         add_topic_to_config(&topic).unwrap_or_else(|_| {
-            eprintln!("Failed to create new topic.",);
+            output_error("Failed to create new topic.",);
             std::process::exit(1);
         });
         return topic;
@@ -30,7 +30,7 @@ impl Topic {
 
     pub fn hydrate(name: &String) -> Self {
         if !topic_exists(&name) {
-            eprintln!("Topic {} has not been created yet.", name);
+            output_error(&format!("Topic {} has not been created yet.", name));
             std::process::exit(1);
         }
         let mut topic = Topic {
@@ -39,7 +39,7 @@ impl Topic {
             curr_log_file: 0,
         };
         get_topic_from_config(&mut topic).unwrap_or_else(|_| {
-            eprintln!("Failed to find topic {}.", name);
+            output_error(&format!("Failed to find topic {}.", name));
             std::process::exit(1);
         });
         return topic;
@@ -47,7 +47,7 @@ impl Topic {
 
     pub fn delete(&self) {
         delete_topic(&self).unwrap_or_else(|_| {
-            eprintln!("Failed to delete topic {}.", &self.name);
+            output_error(&format!("Failed to delete topic {}.", &self.name));
             std::process::exit(1);
         });
         delete_topic_dir(&self.name);
@@ -56,7 +56,7 @@ impl Topic {
 
 impl Display for Topic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        return write!(f, "Topic({}, start file: {}, current file: {})", self.name, self.first_log_file, self.curr_log_file);
+        return write!(f, "{{ \"name\": \"{}\", \"first_log_file\": {}, \"curr_log_file\": {} }}", self.name, self.first_log_file, self.curr_log_file);
     }
 }
 

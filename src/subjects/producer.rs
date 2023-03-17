@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::configs::{topics::{topic_exists}, producers::{add_producer_to_config, get_producer, delete_producer, reroll_producer_key}};
+use crate::{configs::{topics::{topic_exists}, producers::{add_producer_to_config, get_producer, delete_producer, reroll_producer_key}}, output_error};
 
 use super::{keys::generate_key, topic::Topic};
 
@@ -13,7 +13,7 @@ pub struct Producer {
 impl Producer {
     pub fn new(topic: String) -> Self {
         if !topic_exists(&topic){
-            eprintln!("Topic {} has not been created yet.", topic);
+            output_error(&format!("Topic {} has not been created yet.", topic));
             std::process::exit(1);
         }
         let topic = Topic::hydrate(&topic);
@@ -24,7 +24,7 @@ impl Producer {
             key,
         };
         add_producer_to_config(&mut producer).unwrap_or_else(|_| {
-            eprintln!("Failed to create new producer.",);
+            output_error("Failed to create new producer.",);
             std::process::exit(1);
         });
         return producer;
@@ -32,15 +32,15 @@ impl Producer {
 
     pub fn hydrate(token: &String) -> Self {
         let offset = token.split_once("-").unwrap_or_else(|| {
-            eprintln!("Invalid token format.");
+            output_error("Invalid token format.");
             std::process::exit(1);
         });
         let offset:u64 = offset.0.parse().unwrap_or_else(|_| {
-            eprintln!("Invalid token format.");
+            output_error("Invalid token format.");
             std::process::exit(1);
         });
         let producer = get_producer(offset).unwrap_or_else(|_| {
-            eprintln!("Failed to find producer.");
+            output_error("Failed to find producer.");
             std::process::exit(1);
         });
         return producer;
@@ -48,14 +48,14 @@ impl Producer {
 
     pub fn delete(&self) {
         delete_producer(&self).unwrap_or_else(|_| {
-            eprintln!("Failed to delete producer.");
+            output_error("Failed to delete producer.");
             std::process::exit(1);
         });
     }
 
     pub fn reroll(&mut self) {
         let new_key = reroll_producer_key(&self).unwrap_or_else(|_| {
-            eprintln!("Failed to generate new producer key.");
+            output_error("Failed to generate new producer key.");
             std::process::exit(1);
         });
         self.key = new_key;
@@ -64,7 +64,7 @@ impl Producer {
 
 impl Display for Producer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        return write!(f, "Producer({}, {})", self.topic, self.assemble_token());
+        return write!(f, "{{ \"topic\": \"{}\", \"offset\": {}, \"key\": \"{}\"}}", self.topic, self.offset, self.assemble_token());
     }
 }
 

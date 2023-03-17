@@ -1,12 +1,12 @@
 use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
-
-use crate::subjects::{producer::{Producer}, keys::generate_key};
+use crate::{subjects::{producer::{Producer}, keys::generate_key}, output_error};
+use anyhow::Result;
 
 fn create_configs_dir(){
     let path = Path::new("sailfish/configs");
     if !path.exists() {
         fs::create_dir_all(path).unwrap_or_else(|_| {
-            eprintln!("Failed to create configs directory.");
+            output_error("Failed to create configs directory.");
             std::process::exit(1);
         });
     }
@@ -20,12 +20,12 @@ fn get_or_create_producers_file() -> File {
             .create(true)
             .open(path)
             .unwrap_or_else(|_| {
-                eprintln!("Failed to open producer config file.");
+                output_error("Failed to open producer config file.");
                 std::process::exit(1);
             });
 }
 
-pub fn add_producer_to_config(producer: &mut Producer) -> std::io::Result<()> {
+pub fn add_producer_to_config(producer: &mut Producer) -> Result<()> {
     create_configs_dir();
     let file = get_or_create_producers_file();
 
@@ -78,7 +78,7 @@ pub fn get_producer(offset: u64) -> Result<Producer, std::io::Error> {
     return Ok(producer);
 }
 
-pub fn delete_producer(producer: &Producer) -> std::io::Result<()> {
+pub fn delete_producer(producer: &Producer) -> Result<()> {
     let file = get_or_create_producers_file();
 
     let mut writer = BufWriter::new(&file);
@@ -93,7 +93,7 @@ pub fn delete_producer(producer: &Producer) -> std::io::Result<()> {
     return Ok(());
 }
 
-pub fn reroll_producer_key(producer: &Producer) -> std::io::Result<String> {
+pub fn reroll_producer_key(producer: &Producer) -> Result<String> {
     let file = get_or_create_producers_file();
 
     let mut writer = BufWriter::new(&file);
@@ -106,7 +106,7 @@ pub fn reroll_producer_key(producer: &Producer) -> std::io::Result<String> {
     return Ok(new_key);
 }
 
-pub fn list_producers() -> std::io::Result<()> {
+pub fn list_producers() -> Result<()> {
     let file = get_or_create_producers_file();
 
     let mut reader = BufReader::new(&file);

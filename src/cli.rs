@@ -9,6 +9,7 @@ use configs::topics::list_topics;
 use subjects::consumer::Consumer;
 use subjects::producer::Producer;
 use subjects::topic::Topic;
+use anyhow::Result;
 
 enum Commands {
     Cleanup,
@@ -65,13 +66,13 @@ fn main(){
     let cmd = env::args()
                 .nth(1)
                 .unwrap_or_else(|| {
-                    eprintln!("Missing command.");
+                    output_error("Missing command.");
                     std::process::exit(1);
                 })
                 .to_lowercase();
     let cmd = Commands::from_str(&cmd)
                 .unwrap_or_else(|e| {
-                    eprintln!("{}", e);
+                    output_error(&e);
                     std::process::exit(1);
                 });
     match cmd {
@@ -85,17 +86,21 @@ fn main(){
     }
 }
 
+fn output_error(e: &str){
+    eprintln!("{{ \"success\": false, \"error\": \"{}\" }}", e);
+}
+
 fn get_subject() -> Subject {
     let subject = env::args()
                     .nth(2)
                     .unwrap_or_else(|| {
-                        eprintln!("Missing command subject.");
+                        output_error("Missing command subject.");
                         std::process::exit(1);
                     })
                     .to_lowercase();
     let subject = Subject::from_str(&subject)
                     .unwrap_or_else(|e| {
-                        eprintln!("{}", e);
+                        output_error(&e);
                         std::process::exit(1);
                     });
     return subject;
@@ -105,7 +110,7 @@ fn get_topic() -> String {
     let topic = env::args()
                     .nth(3)
                     .unwrap_or_else(|| {
-                        eprintln!("Missing topic.");
+                        output_error("Missing topic.");
                         std::process::exit(1);
                     })
                     .to_lowercase();
@@ -116,7 +121,7 @@ fn get_token() -> String {
     let token = env::args()
                     .nth(3)
                     .unwrap_or_else(|| {
-                        eprintln!("Missing token.");
+                        output_error("Missing token.");
                         std::process::exit(1);
                     })
                     .to_lowercase();
@@ -166,30 +171,30 @@ fn delete() {
 fn delete_producer(){
     let token = get_token();
     Producer::hydrate(&token).delete();
-    println!("Producer {} has been deleted.", token);
+    println!("{{ \"success\": true  }}");
 }
 
 fn delete_consumer(){
     let token = get_token();
     Consumer::hydrate(&token).delete();
-    println!("Consumer {} has been deleted.", token);
+    println!("{{ \"success\": true  }}");
 }
 
 fn delete_topic(){
     let topic = get_topic();
     Topic::hydrate(&topic).delete();
-    println!("Topic {} has been deleted.", topic);
+    println!("{{ \"success\": true  }}");
 }
 
 fn update() {
     let subject = get_subject();
     match subject {
         Subject::Producer => {
-            eprintln!("Producers cannot be updated.");
+            output_error("Producers cannot be updated.");
             std::process::exit(1);
         },
         Subject::Consumer => {
-            eprintln!("Consumers cannot be updated.");
+            output_error("Consumers cannot be updated.");
             std::process::exit(1);
         },
         Subject::Topic => todo!("delete topic"),
@@ -202,7 +207,7 @@ fn reroll() {
         Subject::Producer => reroll_producer(),
         Subject::Consumer => reroll_consumer(),
         Subject::Topic => {
-            eprintln!("Topics cannot be rerolled.");
+            output_error("Topics cannot be rerolled.");
             std::process::exit(1);
         },
     }
@@ -253,15 +258,15 @@ fn list_subject(){
     let subject = get_subject();
     match subject {
         Subject::Producer => list_producers().unwrap_or_else(|e|{
-            eprintln!("{}", e);
+            output_error(&e.to_string());
             std::process::exit(1);
         }),
         Subject::Consumer => list_consumers().unwrap_or_else(|e|{
-            eprintln!("{}", e);
+            output_error(&e.to_string());
             std::process::exit(1);
         }),
         Subject::Topic => list_topics().unwrap_or_else(|e|{
-            eprintln!("{}", e);
+            output_error(&e.to_string());
             std::process::exit(1);
         }),
     }
