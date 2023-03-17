@@ -1,6 +1,7 @@
-# Sailfish
+<p align="center">
+  <img alt="sailfish - A high-performance HTTP based durable event queue." src="https://user-images.githubusercontent.com/15202776/225713854-f3419043-53a3-4602-86c1-228e9e95f789.png">
+</p>
 
-A high-performance HTTP based durable event queue built for resource restricted environments.
 
 > **Note**: this project is still under development. [Track the progress here](https://github.com/users/codewithkyle/projects/2/views/1).
 
