@@ -1,11 +1,12 @@
 use std::fmt::Display;
 
-use crate::{configs::topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir}, output_error};
+use crate::{configs::topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir, update_topic_in_config}, output_error};
 
 pub struct Topic {
     pub name: String,
     pub first_log_file: u64,
     pub curr_log_file: u64,
+    pub offset: u64,
 }
 
 impl Topic {
@@ -15,11 +16,15 @@ impl Topic {
             output_error("Invalid topic name.");
             std::process::exit(1);
         }
-        create_topic_dir(&name);
+        create_topic_dir(&name).unwrap_or_else(|_|{
+            output_error("Failed to create topic directory.");
+            std::process::exit(1);
+        });
         let topic = Topic {
             name,
             first_log_file: 0,
             curr_log_file: 0,
+            offset: 0,
         };
         add_topic_to_config(&topic).unwrap_or_else(|_| {
             output_error("Failed to create new topic.",);
@@ -37,6 +42,7 @@ impl Topic {
             name: name.to_owned(),
             first_log_file: 0,
             curr_log_file: 0,
+            offset: 0,
         };
         get_topic_from_config(&mut topic).unwrap_or_else(|_| {
             output_error(&format!("Failed to find topic {}.", name));
@@ -51,6 +57,14 @@ impl Topic {
             std::process::exit(1);
         });
         delete_topic_dir(&self.name);
+    }
+
+    pub fn bump(&mut self) {
+        self.curr_log_file += 1;
+        update_topic_in_config(&self).unwrap_or_else(|_| {
+            output_error("Failed to create new log file.");
+            std::process::exit(1);
+        });
     }
 }
 

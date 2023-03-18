@@ -43,7 +43,7 @@ impl Producer {
             output_error("Failed to find producer.");
             std::process::exit(1);
         });
-        if &producer.key != token {
+        if &producer.key != token.split_once("-").unwrap_or(("", "")).1 {
             output_error("Unauthorized.");
             std::process::exit(1);
         }

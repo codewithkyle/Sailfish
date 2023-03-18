@@ -2,16 +2,14 @@ use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek
 use anyhow::Result;
 use crate::{subjects::{topic::Topic, keys::generate_key}, output_error};
 
-pub fn create_topic_dir(topic: &str) {
+pub fn create_topic_dir(topic: &str) -> Result<()> {
     let path = format!("sailfish/logs/{}", topic);
     let path = Path::new(&path);
     if !path.exists() {
-        fs::create_dir_all(path).unwrap_or_else(|_| {
-            output_error(&format!("Failed to create {} directory.", topic));
-            std::process::exit(1);
-        });
+        fs::create_dir_all(path)?;
     }
-    create_topic_file(topic, 0);
+    create_topic_file(topic, 0)?;
+    return Ok(());
 }
 
 pub fn delete_topic_dir(topic: &str) {
@@ -25,29 +23,34 @@ pub fn delete_topic_dir(topic: &str) {
     }
 }
 
-fn create_topic_file(topic: &str, file: usize) {
+fn create_topic_file(topic: &str, file: usize) -> Result<File> {
     let path = format!("sailfish/logs/{}/{}", topic, file);
     let path = Path::new(&path);
-    if !path.exists() {
-        File::create(path).unwrap_or_else(|_| {
-            output_error(&format!("Failed to create {}.", topic));
-            std::process::exit(1);
-        });
-    }
+    let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(path)?;
+    return Ok(file);
 }
 
-fn get_topic_file(topic: &str) -> File {
-    let topic = Topic::hydrate(topic);
+fn get_topic_file(topic: &str) -> Result<File> {
+    let mut topic = Topic::hydrate(topic);
     let path = format!("sailfish/logs/{}/{}", topic.name, topic.curr_log_file);
     let path = Path::new(&path);
-    return OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(path)
-            .unwrap_or_else(|_| {
-                output_error("Failed to open log file.");
-                std::process::exit(1);
-            });
+    let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(path)?;
+
+    // Greater than or equal to 2GB
+    if file.metadata()?.len() >= 2000000000 {
+        topic.bump();
+        let file = create_topic_file(&topic.name, topic.curr_log_file as usize)?;
+        return Ok(file);
+    }
+
+    return Ok(file);
 }
 
 pub fn topic_exists(topic: &str) -> bool {
@@ -101,11 +104,32 @@ pub fn add_topic_to_config(topic: &Topic) -> Result<()> {
     return Ok(());
 }
 
+pub fn update_topic_in_config(topic: &Topic) -> Result<()> {
+    create_configs_dir();
+
+    let file = get_or_create_topics_file();
+    let name_length = topic.name.as_bytes().len() as u64;
+    let mut writer = BufWriter::new(&file);
+
+    // Skip to offset + name len & name value
+    writer.seek(SeekFrom::Start(topic.offset + 8 + name_length))?;
+
+    // Write file info (8 bytes ea)
+    writer.write_all(&topic.first_log_file.to_be_bytes())?;
+    writer.write_all(&topic.curr_log_file.to_be_bytes())?;
+
+    writer.flush()?;
+
+    return Ok(());
+}
+
 pub fn get_topic_from_config(topic: &mut Topic) -> Result<()> {
     let file = get_or_create_topics_file();
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
+
+    let mut bytes_read:u64 = 0;
 
     loop {
         // Read & parse name length from buffer (8 bytes)
@@ -128,12 +152,16 @@ pub fn get_topic_from_config(topic: &mut Topic) -> Result<()> {
             let mut curr_log_buffer = [0u8; 8];
             reader.read_exact(&mut curr_log_buffer)?;
             topic.curr_log_file = u64::from_be_bytes(curr_log_buffer);
+
+            topic.offset = bytes_read;
             
             break;
         }
 
         // Skip the next 16 bytes (2x 8 byte file info)
         reader.seek(SeekFrom::Current(16))?;
+
+        bytes_read += 8 + name_length + 16;
     }
     
     return Ok(());
@@ -234,6 +262,7 @@ pub fn list_topics() -> Result<()> {
             name,
             first_log_file,
             curr_log_file,
+            offset: bytes_read,
         };
         println!("{}", topic);
 
@@ -246,7 +275,7 @@ pub fn list_topics() -> Result<()> {
 pub fn write(topic: &str, content: &str) -> Result<()> {
     let eid = generate_key();
 
-    let file = get_topic_file(topic);
+    let file = get_topic_file(topic)?;
     let mut writer = BufWriter::new(file);
     writer.seek(SeekFrom::End(0))?;
 
