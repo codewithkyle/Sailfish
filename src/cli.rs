@@ -298,4 +298,14 @@ fn write(){
 }
 
 fn read(){
+    let token = env::args()
+                    .nth(2)
+                    .unwrap_or_else(|| {
+                        output_error("Missing token.");
+                        std::process::exit(1);
+                    })
+                    .to_lowercase();
+    let mut consumer = Consumer::hydrate(&token);
+    let event = consumer.read();
+    println!("{}", event);
 }

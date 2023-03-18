@@ -1,6 +1,6 @@
 use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
-use anyhow::Result;
-use crate::{subjects::{topic::Topic, keys::generate_key}, output_error};
+use anyhow::{Result, anyhow};
+use crate::{subjects::{topic::Topic, keys::generate_key, consumer::Consumer, event::Event}, output_error};
 
 pub fn create_topic_dir(topic: &str) -> Result<()> {
     let path = format!("sailfish/logs/{}", topic);
@@ -34,7 +34,7 @@ fn create_topic_file(topic: &str, file: usize) -> Result<File> {
     return Ok(file);
 }
 
-fn get_topic_file(topic: &str) -> Result<File> {
+fn get_latest_topic_file(topic: &str) -> Result<File> {
     let mut topic = Topic::hydrate(topic);
     let path = format!("sailfish/logs/{}/{}", topic.name, topic.curr_log_file);
     let path = Path::new(&path);
@@ -50,6 +50,16 @@ fn get_topic_file(topic: &str) -> Result<File> {
         return Ok(file);
     }
 
+    return Ok(file);
+}
+
+fn get_topic_file(topic: &str, file_id: &u64) -> Result<File> {
+    let path = format!("sailfish/logs/{}/{}", topic, file_id);
+    let path = Path::new(&path);
+    let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(path)?;
     return Ok(file);
 }
 
@@ -275,14 +285,12 @@ pub fn list_topics() -> Result<()> {
 pub fn write(topic: &str, content: &str) -> Result<()> {
     let eid = generate_key();
 
-    let file = get_topic_file(topic)?;
+    let file = get_latest_topic_file(topic)?;
     let mut writer = BufWriter::new(file);
     writer.seek(SeekFrom::End(0))?;
 
-    let eid_bytes = eid.as_bytes();
-    let eid_length = eid_bytes.len() as u64;
-    writer.write_all(&eid_length.to_be_bytes())?;
-    writer.write_all(&eid_bytes)?;
+    // 36 bytes
+    writer.write_all(&eid.as_bytes())?;
 
     let content_bytes = content.as_bytes();
     let content_length = content_bytes.len() as u64;
@@ -292,4 +300,44 @@ pub fn write(topic: &str, content: &str) -> Result<()> {
     writer.flush()?;
 
     return Ok(());
+}
+
+pub fn read(consumer: &mut Consumer) -> Result<Event> {
+
+    let mut file = get_topic_file(&consumer.topic, &consumer.log_file)?;
+
+    if consumer.log_offset == file.metadata()?.len() {
+        let topic = Topic::hydrate(&consumer.topic);
+        if topic.curr_log_file != consumer.log_file {
+            consumer.log_offset = 0;
+            consumer.log_file += 1;
+            file = get_topic_file(&consumer.topic, &consumer.log_file)?;
+        } else {
+            return Err(anyhow!("EOF"));
+        }
+    }
+
+    let mut reader = BufReader::new(&file);
+    reader.seek(SeekFrom::Start(consumer.log_offset))?;
+
+    let mut eid_buffer:Vec<u8> = vec![0u8; 36];
+    reader.read_exact(&mut eid_buffer)?;
+    let eid = String::from_utf8(eid_buffer)?;
+
+    let mut content_length_buffer = [0u8; 8];
+    reader.read_exact(&mut content_length_buffer)?;
+    let content_length = u64::from_be_bytes(content_length_buffer);
+
+    let mut content_buffer:Vec<u8> = vec![0u8; content_length as usize];
+    reader.read_exact(&mut content_buffer)?;
+    let content = String::from_utf8(content_buffer)?;
+
+    consumer.log_offset += 36 + 8 + content_length;
+
+    let event = Event {
+        eid,
+        content,
+    };
+    
+    return Ok(event);
 }

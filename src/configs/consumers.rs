@@ -51,6 +51,19 @@ pub fn add_consumer_to_config(consumer: &mut Consumer) -> Result<()> {
     return Ok(());
 }
 
+pub fn update_consumer_in_config(consumer: &Consumer) -> Result<()> {
+    let file = get_or_create_consumers_file();
+    let mut writer = BufWriter::new(&file);
+    writer.seek(SeekFrom::Start(consumer.offset + 36 + 8 + consumer.topic.as_bytes().len() as u64))?;
+
+    writer.write_all(&consumer.log_file.to_be_bytes())?;
+    writer.write_all(&consumer.log_offset.to_be_bytes())?;
+
+    writer.flush()?;
+
+    return Ok(());
+}
+
 pub fn get_consumer(offset: u64) -> Result<Consumer, std::io::Error> {
     let file = get_or_create_consumers_file();
 

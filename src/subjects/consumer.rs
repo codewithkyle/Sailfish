@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use crate::{configs::{topics::{topic_exists}, consumers::{add_consumer_to_config, get_consumer, delete_consumer, reroll_consumer_key}}, output_error};
+use crate::{configs::{topics::{topic_exists, read}, consumers::{add_consumer_to_config, get_consumer, delete_consumer, reroll_consumer_key, update_consumer_in_config}}, output_error};
 
-use super::{keys::generate_key, topic::Topic};
+use super::{keys::generate_key, topic::Topic, event::Event};
 
 pub struct Consumer {
     pub topic: String,
@@ -48,6 +48,10 @@ impl Consumer {
             output_error("Failed to find consumer.");
             std::process::exit(1);
         });
+        if consumer.key != token.split_once("-").unwrap_or(("","")).1 {
+            output_error("Unauthorized.");
+            std::process::exit(1);
+        }
         return consumer;
     }
 
@@ -64,6 +68,18 @@ impl Consumer {
             std::process::exit(1);
         });
         self.key = new_key;
+    }
+
+    pub fn read(&mut self) -> Event {
+        let content = read(self).unwrap_or_else(|e| {
+            output_error(&e.to_string());
+            std::process::exit(1);
+        });
+        update_consumer_in_config(self).unwrap_or_else(|_| {
+            output_error("Failed to update consumer after reading log data.");
+            std::process::exit(1);
+        });
+        return content;
     }
 }
 
