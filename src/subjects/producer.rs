@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{configs::{topics::{topic_exists}, producers::{add_producer_to_config, get_producer, delete_producer, reroll_producer_key}}, output_error};
+use crate::{configs::{topics::{topic_exists, write}, producers::{add_producer_to_config, get_producer, delete_producer, reroll_producer_key}}, output_error};
 
 use super::{keys::generate_key, topic::Topic};
 
@@ -43,6 +43,10 @@ impl Producer {
             output_error("Failed to find producer.");
             std::process::exit(1);
         });
+        if &producer.key != token {
+            output_error("Unauthorized.");
+            std::process::exit(1);
+        }
         return producer;
     }
 
@@ -59,6 +63,13 @@ impl Producer {
             std::process::exit(1);
         });
         self.key = new_key;
+    }
+
+    pub fn write(&self, content: &str) {
+        write(&self.topic, content).unwrap_or_else(|_| {
+            output_error("Failed to write content to log file.");
+            std::process::exit(1);
+        });
     }
 }
 

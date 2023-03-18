@@ -28,7 +28,7 @@ impl Topic {
         return topic;
     }
 
-    pub fn hydrate(name: &String) -> Self {
+    pub fn hydrate(name: &str) -> Self {
         if !topic_exists(&name) {
             output_error(&format!("Topic {} has not been created yet.", name));
             std::process::exit(1);

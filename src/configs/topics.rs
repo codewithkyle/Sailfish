@@ -1,6 +1,6 @@
 use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
 use anyhow::Result;
-use crate::{subjects::topic::Topic, output_error};
+use crate::{subjects::{topic::Topic, keys::generate_key}, output_error};
 
 pub fn create_topic_dir(topic: &str) {
     let path = format!("sailfish/logs/{}", topic);
@@ -34,6 +34,20 @@ fn create_topic_file(topic: &str, file: usize) {
             std::process::exit(1);
         });
     }
+}
+
+fn get_topic_file(topic: &str) -> File {
+    let topic = Topic::hydrate(topic);
+    let path = format!("sailfish/logs/{}/{}", topic.name, topic.curr_log_file);
+    let path = Path::new(&path);
+    return OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path)
+            .unwrap_or_else(|_| {
+                output_error("Failed to open log file.");
+                std::process::exit(1);
+            });
 }
 
 pub fn topic_exists(topic: &str) -> bool {
@@ -225,6 +239,28 @@ pub fn list_topics() -> Result<()> {
 
         bytes_read += 8 + name_length + 16;
     }
+
+    return Ok(());
+}
+
+pub fn write(topic: &str, content: &str) -> Result<()> {
+    let eid = generate_key();
+
+    let file = get_topic_file(topic);
+    let mut writer = BufWriter::new(file);
+    writer.seek(SeekFrom::End(0))?;
+
+    let eid_bytes = eid.as_bytes();
+    let eid_length = eid_bytes.len() as u64;
+    writer.write_all(&eid_length.to_be_bytes())?;
+    writer.write_all(&eid_bytes)?;
+
+    let content_bytes = content.as_bytes();
+    let content_length = content_bytes.len() as u64;
+    writer.write_all(&content_length.to_be_bytes())?;
+    writer.write_all(&content_bytes)?;
+
+    writer.flush()?;
 
     return Ok(());
 }

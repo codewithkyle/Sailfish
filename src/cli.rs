@@ -19,6 +19,8 @@ enum Commands {
     Update,
     Stat,
     List,
+    Write,
+    Read,
 }
 
 enum Subject {
@@ -41,6 +43,8 @@ impl FromStr for Commands {
             "update" => return Ok(Commands::Update),
             "stat" => return Ok(Commands::Stat),
             "list" => return Ok(Commands::List),
+            "write" => return Ok(Commands::Write),
+            "read" => return  Ok(Commands::Read),
             _ => Err("Invalid command.".to_string()),
         }    
     }
@@ -83,6 +87,8 @@ fn main(){
         Commands::Reroll => reroll(),
         Commands::Stat => stat_subject(),
         Commands::List => list_subject(),
+        Commands::Write => write(),
+        Commands::Read => read(),
     }
 }
 
@@ -270,4 +276,26 @@ fn list_subject(){
             std::process::exit(1);
         }),
     }
+}
+
+fn write(){
+    let token = env::args()
+                    .nth(2)
+                    .unwrap_or_else(|| {
+                        output_error("Missing token.");
+                        std::process::exit(1);
+                    })
+                    .to_lowercase();
+    let content = env::args()
+                    .nth(3)
+                    .unwrap_or_else(|| {
+                        output_error("Missing content.");
+                        std::process::exit(1);
+                    });
+    let producer = Producer::hydrate(&token);
+    producer.write(&content);
+    println!("{{ \"success\": true  }}");
+}
+
+fn read(){
 }
