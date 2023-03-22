@@ -35,7 +35,7 @@ fn create_topic_file(topic: &str, file: usize) -> Result<File> {
 }
 
 fn get_latest_topic_file(topic: &str) -> Result<File> {
-    let mut topic = Topic::hydrate(topic);
+    let mut topic = Topic::hydrate(topic)?;
     let path = format!("sailfish/logs/{}/{}", topic.name, topic.curr_log_file);
     let path = Path::new(&path);
     let file = OpenOptions::new()
@@ -45,7 +45,7 @@ fn get_latest_topic_file(topic: &str) -> Result<File> {
 
     // Greater than or equal to 2GB
     if file.metadata()?.len() >= 2000000000 {
-        topic.bump();
+        topic.bump()?;
         let file = create_topic_file(&topic.name, topic.curr_log_file as usize)?;
         return Ok(file);
     }
@@ -307,7 +307,7 @@ pub fn read(consumer: &mut Consumer) -> Result<Event> {
     let mut file = get_topic_file(&consumer.topic, &consumer.log_file)?;
 
     if consumer.log_offset == file.metadata()?.len() {
-        let topic = Topic::hydrate(&consumer.topic);
+        let topic = Topic::hydrate(&consumer.topic)?;
         if topic.curr_log_file != consumer.log_file {
             consumer.log_offset = 0;
             consumer.log_file += 1;

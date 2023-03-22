@@ -1,7 +1,6 @@
 use std::fmt::Display;
-
-use crate::{configs::{topics::{topic_exists, write}, producers::{add_producer_to_config, get_producer, delete_producer, reroll_producer_key}}, output_error};
-
+use anyhow::{Result, anyhow};
+use crate::configs::{topics::{topic_exists, write}, producers::{add_producer_to_config, get_producer, delete_producer, reroll_producer_key}};
 use super::{keys::generate_key, topic::Topic};
 
 pub struct Producer {
@@ -11,65 +10,48 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub fn new(topic: String) -> Self {
+    pub fn new(topic: String) -> Result<Self> {
         if !topic_exists(&topic){
-            output_error(&format!("Topic {} has not been created yet.", topic));
-            std::process::exit(1);
+            return Err(anyhow!("Topic {} has not been created yet.", topic));
         }
-        let topic = Topic::hydrate(&topic);
+        let topic = Topic::hydrate(&topic)?;
         let key = generate_key();
         let mut producer = Producer{
             topic: topic.name,
             offset: 0,
             key,
         };
-        add_producer_to_config(&mut producer).unwrap_or_else(|_| {
-            output_error("Failed to create new producer.",);
-            std::process::exit(1);
-        });
-        return producer;
+        add_producer_to_config(&mut producer)?;
+        return Ok(producer);
     }
 
-    pub fn hydrate(token: &String) -> Self {
-        let offset = token.split_once("-").unwrap_or_else(|| {
-            output_error("Invalid token format.");
-            std::process::exit(1);
-        });
-        let offset:u64 = offset.0.parse().unwrap_or_else(|_| {
-            output_error("Invalid token format.");
-            std::process::exit(1);
-        });
-        let producer = get_producer(offset).unwrap_or_else(|_| {
-            output_error("Failed to find producer.");
-            std::process::exit(1);
-        });
-        if &producer.key != token.split_once("-").unwrap_or(("", "")).1 {
-            output_error("Unauthorized.");
-            std::process::exit(1);
+    pub fn hydrate(token: &String) -> Result<Self> {
+        let offset = token.split_once("-").unwrap_or(("", ""));
+        if offset.0 == "" || offset.1 == "" {
+            return Err(anyhow!("Invalid token format."));
         }
-        return producer;
+        let offset:u64 = offset.0.parse()?;
+        let producer = get_producer(offset)?;
+        if &producer.key != token.split_once("-").unwrap_or(("", "")).1 {
+            return Err(anyhow!("Unauthorized."));
+        }
+        return Ok(producer);
     }
 
-    pub fn delete(&self) {
-        delete_producer(&self).unwrap_or_else(|_| {
-            output_error("Failed to delete producer.");
-            std::process::exit(1);
-        });
+    pub fn delete(&self) -> Result<()> {
+        delete_producer(&self)?;
+        return Ok(());
     }
 
-    pub fn reroll(&mut self) {
-        let new_key = reroll_producer_key(&self).unwrap_or_else(|_| {
-            output_error("Failed to generate new producer key.");
-            std::process::exit(1);
-        });
+    pub fn reroll(&mut self) -> Result<()> {
+        let new_key = reroll_producer_key(&self)?;
         self.key = new_key;
+        return Ok(());
     }
 
-    pub fn write(&self, content: &str) {
-        write(&self.topic, content).unwrap_or_else(|_| {
-            output_error("Failed to write content to log file.");
-            std::process::exit(1);
-        });
+    pub fn write(&self, content: &str) -> Result<()> {
+        write(&self.topic, content)?;
+        return Ok(());
     }
 }
 

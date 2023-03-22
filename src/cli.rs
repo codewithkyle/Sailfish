@@ -149,13 +149,19 @@ fn add() {
 
 fn add_consumer() {
     let topic = get_topic();
-    let consumer = Consumer::new(topic);
+    let consumer = Consumer::new(topic).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", consumer);
 }
 
 fn add_producer(){
     let topic = get_topic();
-    let producer = Producer::new(topic);
+    let producer = Producer::new(topic).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", producer);
 }
 
@@ -176,19 +182,40 @@ fn delete() {
 
 fn delete_producer(){
     let token = get_token();
-    Producer::hydrate(&token).delete();
+    let producer = Producer::hydrate(&token).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    producer.delete().unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{{ \"success\": true  }}");
 }
 
 fn delete_consumer(){
     let token = get_token();
-    Consumer::hydrate(&token).delete();
+    let consumer = Consumer::hydrate(&token).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    consumer.delete().unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{{ \"success\": true  }}");
 }
 
 fn delete_topic(){
     let topic = get_topic();
-    Topic::hydrate(&topic).delete();
+    let topic = Topic::hydrate(&topic).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    topic.delete().unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{{ \"success\": true  }}");
 }
 
@@ -221,15 +248,27 @@ fn reroll() {
 
 fn reroll_producer(){
     let token = get_token();
-    let mut producer = Producer::hydrate(&token);
-    producer.reroll();
+    let mut producer = Producer::hydrate(&token).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    producer.reroll().unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", producer);
 }
 
 fn reroll_consumer(){
     let token = get_token();
-    let mut consumer = Consumer::hydrate(&token);
-    consumer.reroll();
+    let mut consumer = Consumer::hydrate(&token).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    consumer.reroll().unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", consumer);
 }
 
@@ -244,19 +283,28 @@ fn stat_subject() {
 
 fn stat_producer(){
     let token = get_token();
-    let producer = Producer::hydrate(&token);
+    let producer = Producer::hydrate(&token).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", producer);
 }
 
 fn stat_consumer(){
     let token = get_token();
-    let consumer = Consumer::hydrate(&token);
+    let consumer = Consumer::hydrate(&token).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", consumer);
 }
 
 fn stat_topic(){
     let topic = get_topic();
-    let topic = Topic::hydrate(&topic);
+    let topic = Topic::hydrate(&topic).unwrap_or_else(|e|{
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", topic);
 }
 
@@ -292,8 +340,14 @@ fn write(){
                         output_error("Missing content.");
                         std::process::exit(1);
                     });
-    let producer = Producer::hydrate(&token);
-    producer.write(&content);
+    let producer = Producer::hydrate(&token).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    producer.write(&content).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{{ \"success\": true  }}");
 }
 
@@ -305,7 +359,13 @@ fn read(){
                         std::process::exit(1);
                     })
                     .to_lowercase();
-    let mut consumer = Consumer::hydrate(&token);
-    let event = consumer.read();
+    let mut consumer = Consumer::hydrate(&token).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    let event = consumer.read().unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", event);
 }

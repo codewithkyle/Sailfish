@@ -1,6 +1,6 @@
 use std::fmt::Display;
-
 use crate::{configs::topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir, update_topic_in_config}, output_error};
+use anyhow::{Result, anyhow};
 
 pub struct Topic {
     pub name: String,
@@ -33,10 +33,9 @@ impl Topic {
         return topic;
     }
 
-    pub fn hydrate(name: &str) -> Self {
+    pub fn hydrate(name: &str) -> Result<Self, anyhow::Error> {
         if !topic_exists(&name) {
-            output_error(&format!("Topic {} has not been created yet.", name));
-            std::process::exit(1);
+            return Err(anyhow!("Topic {} has not been created yet.", name));
         }
         let mut topic = Topic {
             name: name.to_owned(),
@@ -44,27 +43,20 @@ impl Topic {
             curr_log_file: 0,
             offset: 0,
         };
-        get_topic_from_config(&mut topic).unwrap_or_else(|_| {
-            output_error(&format!("Failed to find topic {}.", name));
-            std::process::exit(1);
-        });
-        return topic;
+        get_topic_from_config(&mut topic)?;
+        return Ok(topic);
     }
 
-    pub fn delete(&self) {
-        delete_topic(&self).unwrap_or_else(|_| {
-            output_error(&format!("Failed to delete topic {}.", &self.name));
-            std::process::exit(1);
-        });
+    pub fn delete(&self) -> Result<()> {
+        delete_topic(&self)?;
         delete_topic_dir(&self.name);
+        return Ok(());
     }
 
-    pub fn bump(&mut self) {
+    pub fn bump(&mut self) -> Result<()> {
         self.curr_log_file += 1;
-        update_topic_in_config(&self).unwrap_or_else(|_| {
-            output_error("Failed to create new log file.");
-            std::process::exit(1);
-        });
+        update_topic_in_config(&self)?;
+        return Ok(());
     }
 }
 
