@@ -21,7 +21,7 @@ impl Consumer {
         let key = generate_key();
         let mut consumer = Consumer{
             topic: topic.name,
-            log_file: 0,
+            log_file: topic.first_log_file,
             log_offset: 0,
             offset: 0,
             key,
