@@ -44,7 +44,7 @@ fn get_latest_topic_file(topic: &str) -> Result<File> {
                     .open(path)?;
 
     // Greater than or equal to 2GB (2000000000)
-    if file.metadata()?.len() >= 128 {
+    if file.metadata()?.len() >= 2000000000 {
         topic.bump()?;
         let file = create_topic_file(&topic.name, topic.curr_log_file as usize)?;
         return Ok(file);
