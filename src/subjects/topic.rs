@@ -1,5 +1,7 @@
+#![allow(unused)]
+
 use std::fmt::Display;
-use crate::{configs::{topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir, update_topic_in_config, delete_old_logs}, consumers::get_oldest_active_log_file}, output_error};
+use crate::configs::{topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir, update_topic_in_config, delete_old_logs}, consumers::get_oldest_active_log_file};
 use anyhow::{Result, anyhow};
 
 pub struct Topic {
@@ -10,27 +12,20 @@ pub struct Topic {
 }
 
 impl Topic {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: String) -> Result<Self> {
         let name = name.to_lowercase();
         if !Topic::validate(&name) {
-            output_error("Invalid topic name.");
-            std::process::exit(1);
+            return Err(anyhow!("Invalid topic name."));
         }
-        create_topic_dir(&name).unwrap_or_else(|_|{
-            output_error("Failed to create topic directory.");
-            std::process::exit(1);
-        });
+        create_topic_dir(&name)?;
         let topic = Topic {
             name,
             first_log_file: 0,
             curr_log_file: 0,
             offset: 0,
         };
-        add_topic_to_config(&topic).unwrap_or_else(|_| {
-            output_error("Failed to create new topic.",);
-            std::process::exit(1);
-        });
-        return topic;
+        add_topic_to_config(&topic)?;
+        return Ok(topic);
     }
 
     pub fn hydrate(name: &str) -> Result<Self, anyhow::Error> {
@@ -49,7 +44,7 @@ impl Topic {
 
     pub fn delete(&self) -> Result<()> {
         delete_topic(&self)?;
-        delete_topic_dir(&self.name);
+        delete_topic_dir(&self.name)?;
         return Ok(());
     }
 

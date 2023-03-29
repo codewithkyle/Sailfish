@@ -1,6 +1,8 @@
+#![allow(unused)]
+
 use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
 use anyhow::{Result, anyhow};
-use crate::{subjects::{topic::Topic, keys::generate_key, consumer::Consumer, event::Event}, output_error};
+use crate::subjects::{topic::Topic, keys::generate_key, consumer::Consumer, event::Event};
 
 pub fn create_topic_dir(topic: &str) -> Result<()> {
     let path = format!("sailfish/logs/{}", topic);
@@ -12,15 +14,13 @@ pub fn create_topic_dir(topic: &str) -> Result<()> {
     return Ok(());
 }
 
-pub fn delete_topic_dir(topic: &str) {
+pub fn delete_topic_dir(topic: &str) -> Result<()> {
     let path = format!("sailfish/logs/{}", topic);
     let path = Path::new(&path);
     if path.exists() {
-        fs::remove_dir_all(path).unwrap_or_else(|_| {
-            output_error(&format!("Failed to delete {} logs.", topic));
-            std::process::exit(1);
-        });
+        fs::remove_dir_all(path)?;
     }
+    return Ok(());
 }
 
 fn create_topic_file(topic: &str, file: usize) -> Result<File> {
@@ -69,32 +69,27 @@ pub fn topic_exists(topic: &str) -> bool {
     return path.exists();
 }
 
-fn create_configs_dir(){
+fn create_configs_dir() -> Result<()> {
     let path = Path::new("sailfish/configs");
     if !path.exists() {
-        fs::create_dir_all(path).unwrap_or_else(|_| {
-            output_error("Failed to create configs directory.");
-            std::process::exit(1);
-        });
+        fs::create_dir_all(path)?;
     }
+    return Ok(());
 }
 
-fn get_or_create_topics_file() -> File {
+fn get_or_create_topics_file() -> Result<File> {
     let path = Path::new("sailfish/configs/topics");
-    return OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(path)
-            .unwrap_or_else(|_| {
-                output_error("Failed to open topic config file.");
-                std::process::exit(1);
-            });
+    let file = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .open(path)?;
+    return Ok(file);
 }
 
 pub fn add_topic_to_config(topic: &Topic) -> Result<()> {
-    create_configs_dir();
-    let file = get_or_create_topics_file();
+    create_configs_dir()?;
+    let file = get_or_create_topics_file()?;
 
     let mut writer = BufWriter::new(&file);
     writer.seek(SeekFrom::End(0))?;
@@ -115,9 +110,9 @@ pub fn add_topic_to_config(topic: &Topic) -> Result<()> {
 }
 
 pub fn update_topic_in_config(topic: &Topic) -> Result<()> {
-    create_configs_dir();
+    create_configs_dir()?;
 
-    let file = get_or_create_topics_file();
+    let file = get_or_create_topics_file()?;
     let name_length = topic.name.as_bytes().len() as u64;
     let mut writer = BufWriter::new(&file);
 
@@ -134,7 +129,7 @@ pub fn update_topic_in_config(topic: &Topic) -> Result<()> {
 }
 
 pub fn get_topic_from_config(topic: &mut Topic) -> Result<()> {
-    let file = get_or_create_topics_file();
+    let file = get_or_create_topics_file()?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
@@ -178,7 +173,7 @@ pub fn get_topic_from_config(topic: &mut Topic) -> Result<()> {
 }
 
 pub fn delete_topic(topic: &Topic) -> Result<()> {
-    let file = get_or_create_topics_file();
+    let file = get_or_create_topics_file()?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
@@ -234,7 +229,7 @@ pub fn delete_topic(topic: &Topic) -> Result<()> {
 }
 
 pub fn list_topics() -> Result<()> {
-    let file = get_or_create_topics_file();
+    let file = get_or_create_topics_file()?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;

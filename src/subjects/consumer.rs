@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::fmt::Display;
 use crate::configs::{topics::{topic_exists, read}, consumers::{add_consumer_to_config, get_consumer, delete_consumer, reroll_consumer_key, update_consumer_in_config}};
 use super::{keys::generate_key, topic::Topic, event::Event};

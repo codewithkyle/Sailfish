@@ -182,7 +182,10 @@ fn add_producer(){
 
 fn add_topic() {
     let topic = get_topic();
-    let topic = Topic::new(topic);
+    let topic = Topic::new(topic).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
     println!("{}", topic);
 }
 

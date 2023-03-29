@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::fmt::Display;
 use anyhow::{Result, anyhow};
 use crate::configs::{topics::{topic_exists, write}, producers::{add_producer_to_config, get_producer, delete_producer, reroll_producer_key}};

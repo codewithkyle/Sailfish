@@ -1,33 +1,30 @@
+#![allow(unused)]
+
 use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
 use anyhow::Result;
-use crate::{subjects::{consumer::Consumer, keys::generate_key}, output_error};
+use crate::subjects::{consumer::Consumer, keys::generate_key};
 
-fn create_configs_dir(){
+fn create_configs_dir() -> Result<()> {
     let path = Path::new("sailfish/configs");
     if !path.exists() {
-        fs::create_dir_all(path).unwrap_or_else(|_| {
-            output_error("Failed to create configs directory.");
-            std::process::exit(1);
-        });
+        fs::create_dir_all(path)?;
     }
+    return Ok(());
 }
 
-fn get_or_create_consumers_file() -> File {
+fn get_or_create_consumers_file() -> Result<File> {
     let path = Path::new("sailfish/configs/consumers");
-    return OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(path)
-            .unwrap_or_else(|_| {
-                output_error("Failed to open consumer config file.");
-                std::process::exit(1);
-            });
+    let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(path)?;
+    return Ok(file);
 }
 
 pub fn add_consumer_to_config(consumer: &mut Consumer) -> Result<()> {
-    create_configs_dir();
-    let file = get_or_create_consumers_file();
+    create_configs_dir()?;
+    let file = get_or_create_consumers_file()?;
 
     let mut writer = BufWriter::new(&file);
     consumer.offset = writer.seek(SeekFrom::End(0))?;
@@ -52,7 +49,7 @@ pub fn add_consumer_to_config(consumer: &mut Consumer) -> Result<()> {
 }
 
 pub fn update_consumer_in_config(consumer: &Consumer) -> Result<()> {
-    let file = get_or_create_consumers_file();
+    let file = get_or_create_consumers_file()?;
     let mut writer = BufWriter::new(&file);
     writer.seek(SeekFrom::Start(consumer.offset + 36 + 8 + consumer.topic.as_bytes().len() as u64))?;
 
@@ -64,8 +61,8 @@ pub fn update_consumer_in_config(consumer: &Consumer) -> Result<()> {
     return Ok(());
 }
 
-pub fn get_consumer(offset: u64) -> Result<Consumer, std::io::Error> {
-    let file = get_or_create_consumers_file();
+pub fn get_consumer(offset: u64) -> Result<Consumer> {
+    let file = get_or_create_consumers_file()?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(offset))?;
@@ -107,7 +104,7 @@ pub fn get_consumer(offset: u64) -> Result<Consumer, std::io::Error> {
 }
 
 pub fn delete_consumer(consumer: &Consumer) -> Result<()> {
-    let file = get_or_create_consumers_file();
+    let file = get_or_create_consumers_file()?;
 
     let mut writer = BufWriter::new(&file);
     writer.seek(SeekFrom::Start(consumer.offset))?;
@@ -122,7 +119,7 @@ pub fn delete_consumer(consumer: &Consumer) -> Result<()> {
 }
 
 pub fn reroll_consumer_key(consumer: &Consumer) -> Result<String> {
-    let file = get_or_create_consumers_file();
+    let file = get_or_create_consumers_file()?;
 
     let mut writer = BufWriter::new(&file);
     writer.seek(SeekFrom::Start(consumer.offset))?;
@@ -135,7 +132,7 @@ pub fn reroll_consumer_key(consumer: &Consumer) -> Result<String> {
 }
 
 pub fn list_consumers() -> Result<()> {
-    let file = get_or_create_consumers_file();
+    let file = get_or_create_consumers_file()?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
@@ -191,7 +188,7 @@ pub fn list_consumers() -> Result<()> {
 }
 
 pub fn get_oldest_active_log_file(topic: &str) -> Result<Option<u64>> {
-    let file = get_or_create_consumers_file();
+    let file = get_or_create_consumers_file()?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
