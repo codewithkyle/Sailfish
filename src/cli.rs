@@ -135,7 +135,22 @@ fn get_token() -> String {
 }
 
 fn cleanup(){
-    todo!("cleanup");
+    let topic = env::args()
+                    .nth(2)
+                    .unwrap_or_else(|| {
+                        output_error("Missing topic.");
+                        std::process::exit(1);
+                    })
+                    .to_lowercase();
+    let mut topic = Topic::hydrate(&topic).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    topic.cleanup().unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    println!("{{ \"success\": true }}");
 }
 
 fn add() {

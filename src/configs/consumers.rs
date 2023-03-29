@@ -189,3 +189,50 @@ pub fn list_consumers() -> Result<()> {
 
     return Ok(());
 }
+
+pub fn get_oldest_active_log_file(topic: &str) -> Result<Option<u64>> {
+    let file = get_or_create_consumers_file();
+
+    let mut reader = BufReader::new(&file);
+    reader.seek(SeekFrom::Start(0))?;
+
+    let total_bytes = file.metadata()?.len();
+    let mut bytes_read = 0;
+    let mut oldest_log_file:Option<u64> = None;
+
+    loop {
+        if bytes_read == total_bytes {
+            break;
+        }
+
+        // Skip key
+        reader.seek(SeekFrom::Current(36))?;
+
+        // Read topic length
+        let mut topic_length_buffer = [0u8; 8];
+        reader.read_exact(&mut topic_length_buffer)?;
+        let topic_length:u64 = u64::from_be_bytes(topic_length_buffer);
+
+        // Read topic
+        let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
+        reader.read_exact(&mut topic_buffer[..])?;
+        let consumer_topic = std::str::from_utf8(&topic_buffer).unwrap();
+
+        if topic == consumer_topic {
+            let mut log_file_buffer = [0u8; 8];
+            reader.read_exact(&mut log_file_buffer)?;
+            let log_file = u64::from_be_bytes(log_file_buffer);
+
+            if log_file < oldest_log_file.unwrap_or(u64::MAX) {
+                oldest_log_file = Some(log_file);
+            }
+        }
+
+        // Skip log file offset
+        reader.seek(SeekFrom::Current(8))?;
+
+        bytes_read += 36 + 8 + topic_length + 16;
+    }
+
+    return Ok(oldest_log_file);
+}

@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use crate::{configs::topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir, update_topic_in_config}, output_error};
+use crate::{configs::{topics::{create_topic_dir, add_topic_to_config, topic_exists, get_topic_from_config, delete_topic, delete_topic_dir, update_topic_in_config, delete_old_logs}, consumers::get_oldest_active_log_file}, output_error};
 use anyhow::{Result, anyhow};
 
 pub struct Topic {
@@ -56,6 +56,13 @@ impl Topic {
     pub fn bump(&mut self) -> Result<()> {
         self.curr_log_file += 1;
         update_topic_in_config(&self)?;
+        return Ok(());
+    }
+
+    pub fn cleanup(&mut self) -> Result<()> {
+        self.first_log_file = get_oldest_active_log_file(&self.name)?.unwrap_or(self.first_log_file);
+        update_topic_in_config(&self)?;
+        delete_old_logs(&self.first_log_file, &self.name)?;
         return Ok(());
     }
 }

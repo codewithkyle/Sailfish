@@ -43,8 +43,8 @@ fn get_latest_topic_file(topic: &str) -> Result<File> {
                     .write(true)
                     .open(path)?;
 
-    // Greater than or equal to 2GB
-    if file.metadata()?.len() >= 2000000000 {
+    // Greater than or equal to 2GB (2000000000)
+    if file.metadata()?.len() >= 128 {
         topic.bump()?;
         let file = create_topic_file(&topic.name, topic.curr_log_file as usize)?;
         return Ok(file);
@@ -340,4 +340,22 @@ pub fn read(consumer: &mut Consumer) -> Result<Event> {
     };
     
     return Ok(event);
+}
+
+pub fn delete_old_logs(curr_file: &u64, topic: &str) -> Result<()> {
+    let mut current_file:u64 = 0;
+    loop {
+        if &current_file == curr_file {
+            break;
+        }
+        let path = format!("sailfish/logs/{}/{}", topic, current_file);
+        let path = Path::new(&path);
+        if path.exists() {
+            fs::remove_file(path)?;
+        } else {
+            break;
+        }
+        current_file += 1;
+    }
+    return Ok(());
 }
