@@ -75,6 +75,9 @@ impl Validate for Topic {
     fn validate(name: &String) -> bool {
         if name.contains(" ") {
             return false;
+        } 
+        else if name.as_bytes().len() > i64::MAX as usize {
+            return false;
         }
         return true;
     }

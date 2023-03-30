@@ -70,7 +70,7 @@ pub fn get_consumer(offset: u64) -> Result<Consumer> {
     // Read key
     let mut key_buffer = [0u8; 36];
     reader.read_exact(&mut key_buffer)?;
-    let key = std::str::from_utf8(&key_buffer).unwrap();
+    let key = std::str::from_utf8(&key_buffer)?;
 
     // Read topic length
     let mut topic_length_buffer = [0u8; 8];
@@ -80,7 +80,7 @@ pub fn get_consumer(offset: u64) -> Result<Consumer> {
     // Read topic
     let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
     reader.read_exact(&mut topic_buffer[..])?;
-    let topic = std::str::from_utf8(&topic_buffer).unwrap();
+    let topic = std::str::from_utf8(&topic_buffer)?;
 
     // Read log file
     let mut log_file_buffer = [0u8; 8];
@@ -148,7 +148,7 @@ pub fn list_consumers() -> Result<()> {
         // Read key
         let mut key_buffer = [0u8; 36];
         reader.read_exact(&mut key_buffer)?;
-        let key = std::str::from_utf8(&key_buffer).unwrap();
+        let key = std::str::from_utf8(&key_buffer)?;
 
         // Read topic length
         let mut topic_length_buffer = [0u8; 8];
@@ -158,7 +158,7 @@ pub fn list_consumers() -> Result<()> {
         // Read topic
         let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
         reader.read_exact(&mut topic_buffer[..])?;
-        let topic = std::str::from_utf8(&topic_buffer).unwrap();
+        let topic = std::str::from_utf8(&topic_buffer)?;
 
         // Read log file
         let mut log_file_buffer = [0u8; 8];
@@ -202,27 +202,31 @@ pub fn get_oldest_active_log_file(topic: &str) -> Result<Option<u64>> {
             break;
         }
 
-        // Skip key
-        reader.seek(SeekFrom::Current(36))?;
+        let mut key_buffer = [0u8; 36];
+        reader.read_exact(&mut key_buffer)?;
+        let key = std::str::from_utf8(&key_buffer)?;
 
         // Read topic length
         let mut topic_length_buffer = [0u8; 8];
         reader.read_exact(&mut topic_length_buffer)?;
         let topic_length:u64 = u64::from_be_bytes(topic_length_buffer);
 
-        // Read topic
-        let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
-        reader.read_exact(&mut topic_buffer[..])?;
-        let consumer_topic = std::str::from_utf8(&topic_buffer).unwrap();
+        if !key.escape_default().to_string().contains("\\u{0}") {
+            let mut topic_buffer:Vec<u8> = vec![0; topic_length as usize];
+            reader.read_exact(&mut topic_buffer[..])?;
+            let consumer_topic = std::str::from_utf8(&topic_buffer)?;
 
-        if topic == consumer_topic {
-            let mut log_file_buffer = [0u8; 8];
-            reader.read_exact(&mut log_file_buffer)?;
-            let log_file = u64::from_be_bytes(log_file_buffer);
+            if topic == consumer_topic {
+                let mut log_file_buffer = [0u8; 8];
+                reader.read_exact(&mut log_file_buffer)?;
+                let log_file = u64::from_be_bytes(log_file_buffer);
 
-            if log_file < oldest_log_file.unwrap_or(u64::MAX) {
-                oldest_log_file = Some(log_file);
+                if log_file < oldest_log_file.unwrap_or(u64::MAX) {
+                    oldest_log_file = Some(log_file);
+                }
             }
+        } else {
+            reader.seek(SeekFrom::Current(topic_length as i64));
         }
 
         // Skip log file offset
