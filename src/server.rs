@@ -58,6 +58,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .service(write)
+            .app_data(web::PayloadConfig::new(usize::MAX))
             .service(read)
     })
     .bind(("127.0.0.1", 8080))?
