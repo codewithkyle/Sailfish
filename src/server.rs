@@ -36,7 +36,7 @@ async fn read(token: web::Path<String>) -> Result<HttpResponse> {
         }
         return Ok(HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR).body(format!("{{ \"error\": \"{}\" }}", error)));
     }
-    return Ok(HttpResponse::build(StatusCode::OK).body(format!("{}", data)));
+    return Ok(HttpResponse::build(StatusCode::OK).body(format!("{{ \"eid\": \"{}\", \"content\": \"{}\"  }}", data.eid, data.content)));
 }
 
 #[put("/{token}")]
@@ -58,7 +58,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .service(write)
-            .app_data(web::PayloadConfig::new(usize::MAX))
+            .app_data(web::PayloadConfig::new(u64::MAX as usize))
             .service(read)
     })
     .bind(("127.0.0.1", 8080))?

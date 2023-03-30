@@ -11,6 +11,7 @@ pub fn create_topic_dir(topic: &str) -> Result<()> {
         fs::create_dir_all(path)?;
     }
     create_topic_file(topic, 0)?;
+    create_topic_file(topic, 1)?;
     return Ok(());
 }
 
@@ -46,7 +47,11 @@ fn get_latest_topic_file(topic: &str) -> Result<File> {
     // Greater than or equal to 1GB
     if file.metadata()?.len() >= 1000000000 {
         topic.bump()?;
-        let file = create_topic_file(&topic.name, topic.curr_log_file as usize)?;
+
+        // Always have curr + next file
+        let _ = create_topic_file(&topic.name, (topic.curr_log_file + 1) as usize)?;
+
+        let file = get_latest_topic_file(&topic.name)?;
         return Ok(file);
     }
 
