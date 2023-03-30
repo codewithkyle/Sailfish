@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}};
+use std::{path::Path, fs::{self, File, OpenOptions}, io::{BufWriter, Write, Seek, SeekFrom, BufReader, Read}, sync::Mutex};
 use anyhow::{Result, anyhow};
 use crate::subjects::{topic::Topic, keys::generate_key, consumer::Consumer, event::Event};
 
@@ -29,7 +29,7 @@ fn create_topic_file(topic: &str, file: usize) -> Result<File> {
     let path = Path::new(&path);
     let file = OpenOptions::new()
                     .read(true)
-                    .write(true)
+                    .append(true)
                     .create(true)
                     .open(path)?;
     return Ok(file);
@@ -41,8 +41,9 @@ fn get_latest_topic_file(topic: &str) -> Result<File> {
     let path = Path::new(&path);
     let file = OpenOptions::new()
                     .read(true)
-                    .write(true)
+                    .append(true)
                     .open(path)?;
+
 
     // Greater than or equal to 1GB
     if file.metadata()?.len() >= 1000000000 {
@@ -63,7 +64,7 @@ fn get_topic_file(topic: &str, file_id: &u64) -> Result<File> {
     let path = Path::new(&path);
     let file = OpenOptions::new()
                     .read(true)
-                    .write(true)
+                    .append(true)
                     .open(path)?;
     return Ok(file);
 }
@@ -282,20 +283,22 @@ pub fn list_topics() -> Result<()> {
     return Ok(());
 }
 
-pub fn write(topic: &str, content: &str) -> Result<()> {
+pub fn write(topic: &str, content: &[u8]) -> Result<()> {
+
+    let content_length = content.len() as u64;
+
     let eid = generate_key();
 
+    let capacity = 36+ 8 + content_length as usize;
+
     let file = get_latest_topic_file(topic)?;
-    let mut writer = BufWriter::new(file);
+    let mut writer = BufWriter::with_capacity(capacity, file);
     writer.seek(SeekFrom::End(0))?;
 
     // 36 bytes
     writer.write_all(&eid.as_bytes())?;
-
-    let content_bytes = content.as_bytes();
-    let content_length = content_bytes.len() as u64;
     writer.write_all(&content_length.to_be_bytes())?;
-    writer.write_all(&content_bytes)?;
+    writer.write_all(&content)?;
 
     writer.flush()?;
 
@@ -330,13 +333,12 @@ pub fn read(consumer: &mut Consumer) -> Result<Event> {
 
     let mut content_buffer:Vec<u8> = vec![0u8; content_length as usize];
     reader.read_exact(&mut content_buffer)?;
-    let content = String::from_utf8(content_buffer)?;
 
     consumer.log_offset += 36 + 8 + content_length;
 
     let event = Event {
         eid,
-        content,
+        content: content_buffer,
     };
     
     return Ok(event);

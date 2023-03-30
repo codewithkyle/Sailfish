@@ -51,7 +51,7 @@ impl Producer {
         return Ok(());
     }
 
-    pub fn write(&self, content: &str) -> Result<()> {
+    pub fn write(&self, content: &[u8]) -> Result<()> {
         write(&self.topic, content)?;
         return Ok(());
     }

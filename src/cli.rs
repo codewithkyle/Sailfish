@@ -362,6 +362,11 @@ fn write(){
         output_error(&e.to_string());
         std::process::exit(1);
     });
+    let content = content.as_bytes();
+    if content.len() > usize::MAX {
+        output_error("Oversized payload.");
+        std::process::exit(1);
+    }
     producer.write(&content).unwrap_or_else(|e| {
         output_error(&e.to_string());
         std::process::exit(1);
@@ -385,5 +390,9 @@ fn read(){
         output_error(&e.to_string());
         std::process::exit(1);
     });
-    println!("{}", event);
+    let content = String::from_utf8(event.content).unwrap_or_else(|e| {
+        output_error(&e.to_string());
+        std::process::exit(1);
+    });
+    println!("{}: {}", event.eid, content.escape_default());
 }
