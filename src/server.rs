@@ -9,23 +9,28 @@ use subjects::event::Event;
 
 use actix_web::{get, put, App, HttpServer, web::{self, Bytes}, Result, HttpResponse, http::StatusCode};
 
+#[derive(Debug, Clone)]
+struct Config {
+    pub lossy: bool,
+}
+
 fn write_data(token: &String, content: &[u8]) -> anyhow::Result<()> {
     let producer = Producer::hydrate(&token)?;
     producer.write(content)?;
     return Ok(());
 }
 
-fn read_data(token: &String) -> anyhow::Result<Event> {
+fn read_data(token: &String, bump: bool) -> anyhow::Result<Event> {
     let mut consumer = Consumer::hydrate(&token)?;
-    let data = consumer.read()?;
+    let data = consumer.read(bump)?;
     return Ok(data);
 }
 
 #[get("/{token}")]
-async fn read(token: web::Path<String>) -> Result<HttpResponse> {
+async fn read(token: web::Path<String>, data: web::Data<Config>) -> Result<HttpResponse> {
     let mut error:String = String::new();
     let mut success = "true";
-    let data = read_data(&token).unwrap_or_else(|e| {
+    let data = read_data(&token, data.lossy).unwrap_or_else(|e| {
         error = e.to_string();
         success = "false";
         return Event{eid: String::new(), content: Vec::new()};
@@ -66,6 +71,7 @@ async fn main() -> std::io::Result<()> {
 
     let mut port:u16 = 8080;
     let mut host = "127.0.0.1";
+    let mut lossy = false;
 
     let args = env::args().collect::<Vec<String>>();
     for i in 1..args.len() {
@@ -79,12 +85,21 @@ async fn main() -> std::io::Result<()> {
             "-h" | "--host" => {
                 host = &args[i+1];
             }
+            "-l" | "--lossy" => {
+                lossy = true;
+            }
             _ => {}
         }
     }
-    let server = HttpServer::new(|| {
+
+    let config = web::Data::new(Config {
+        lossy,
+    });
+
+    let server = HttpServer::new(move || {
         App::new()
             .app_data(web::PayloadConfig::new(usize::MAX))
+            .app_data(config.clone())
             .service(read)
             .service(write)
     })

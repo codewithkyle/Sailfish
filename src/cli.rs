@@ -386,7 +386,7 @@ fn read(){
         output_error(&e.to_string());
         std::process::exit(1);
     });
-    let event = consumer.read().unwrap_or_else(|e| {
+    let event = consumer.read(true).unwrap_or_else(|e| {
         output_error(&e.to_string());
         std::process::exit(1);
     });

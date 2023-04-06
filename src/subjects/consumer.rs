@@ -56,9 +56,11 @@ impl Consumer {
         return Ok(());
     }
 
-    pub fn read(&mut self) -> Result<Event> {
+    pub fn read(&mut self, bump: bool) -> Result<Event> {
         let content = read(self)?;
-        update_consumer_in_config(self)?;
+        if bump {
+            update_consumer_in_config(self)?;
+        }
         return Ok(content);
     }
 }
