@@ -1,10 +1,13 @@
 mod subjects;
 mod configs;
 
+use std::env;
+
 use subjects::consumer::Consumer;
 use subjects::producer::Producer;
 use subjects::event::Event;
-use actix_web::{get, put, post, App, HttpServer, web::{self, Bytes}, Result, HttpResponse, http::StatusCode, HttpRequest};
+
+use actix_web::{get, put, App, HttpServer, web::{self, Bytes}, Result, HttpResponse, http::StatusCode};
 
 fn write_data(token: &String, content: &[u8]) -> anyhow::Result<()> {
     let producer = Producer::hydrate(&token)?;
@@ -60,13 +63,37 @@ async fn write(bytes: Bytes, token: web::Path<String>) -> Result<HttpResponse> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+
+    let mut port:u16 = 8080;
+    let mut host = "127.0.0.1";
+
+    let args = env::args().collect::<Vec<String>>();
+    for i in 1..args.len() {
+        match args[i].as_str() {
+            "-p" | "--port" => {
+                port = args[i+1].parse::<u16>().unwrap_or_else(|_| {
+                    println!("Invalid port number. Valid port number is between 1 and 65535.");
+                    std::process::exit(1);
+                });
+            }
+            "-h" | "--host" => {
+                host = &args[i+1];
+            }
+            _ => {}
+        }
+    }
+    let server = HttpServer::new(|| {
         App::new()
-            .service(write)
             .app_data(web::PayloadConfig::new(usize::MAX))
             .service(read)
+            .service(write)
     })
-    .bind(("127.0.0.1", 8080))?
-    .run()
-    .await
+    .bind((host, port))
+    .unwrap_or_else(|e| {
+        println!("Error: {}", e);
+        std::process::exit(1);
+    });
+
+    println!("Listening on port {}", port);
+    server.run().await
 }
