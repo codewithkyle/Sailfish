@@ -7,7 +7,7 @@ use subjects::consumer::Consumer;
 use subjects::producer::Producer;
 use subjects::event::Event;
 
-use actix_web::{get, put, App, HttpServer, web::{self, Bytes}, Result, HttpResponse, http::StatusCode};
+use actix_web::{get, put, post, App, HttpServer, web::{self, Bytes}, Result, HttpResponse, http::StatusCode};
 
 #[derive(Debug, Clone)]
 struct Config {
@@ -26,11 +26,17 @@ fn read_data(token: &String, bump: bool) -> anyhow::Result<Event> {
     return Ok(data);
 }
 
+fn bump(token: &String, event_id: &String) -> anyhow::Result<()> {
+    let mut consumer = Consumer::hydrate(&token)?;
+    consumer.bump(event_id)?;
+    return Ok(());
+}
+
 #[get("/{token}")]
-async fn read(token: web::Path<String>, data: web::Data<Config>) -> Result<HttpResponse> {
+async fn read(token: web::Path<String>, web_data: web::Data<Config>) -> Result<HttpResponse> {
     let mut error:String = String::new();
     let mut success = "true";
-    let data = read_data(&token, data.lossy).unwrap_or_else(|e| {
+    let data = read_data(&token, web_data.lossy).unwrap_or_else(|e| {
         error = e.to_string();
         success = "false";
         return Event{eid: String::new(), content: Vec::new()};
@@ -45,10 +51,33 @@ async fn read(token: web::Path<String>, data: web::Data<Config>) -> Result<HttpR
                   .content_type("application/octet-stream")
                   .body(data.content));
     }
+    
+    if web_data.lossy {
+        return Ok(HttpResponse::build(StatusCode::OK)
+                    .content_type("application/octet-stream")
+                    .body(data.content));
+    }
     return Ok(HttpResponse::build(StatusCode::OK)
-              .content_type("application/octet-stream")
-              .insert_header(("SF-Event-ID", data.eid))
-              .body(data.content));
+                .content_type("application/octet-stream")
+                .insert_header(("SF-Event-ID", data.eid))
+                .body(data.content));
+}
+
+#[post("/{token}/{event_id}")]
+async fn post(tokens: web::Path<(String, String)>, data: web::Data<Config>) -> Result<HttpResponse> {
+    if data.lossy {
+        return Ok(HttpResponse::build(StatusCode::METHOD_NOT_ALLOWED).body(format!("{{ \"success\": \"{}\",\"error\": \"{}\" }}", "false", "Sailfish is running in lossy mode.")));
+    }
+    let mut error:String = String::new();
+    let mut success = "true";
+    bump(&tokens.0, &tokens.1).unwrap_or_else(|e| {
+        error = e.to_string();
+        success = "false";
+    });
+    if success == "false" {
+        return Ok(HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR).body(format!("{{ \"success\": \"{}\",\"error\": \"{}\" }}", success, error)));
+    }
+    return Ok(HttpResponse::build(StatusCode::OK).body(format!("{{ \"success\": \"{}\",\"error\": \"{}\" }}", success, error)));
 }
 
 #[put("/{token}")]
@@ -102,6 +131,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(config.clone())
             .service(read)
             .service(write)
+            .service(post)
     })
     .bind((host, port))
     .unwrap_or_else(|e| {
@@ -109,6 +139,6 @@ async fn main() -> std::io::Result<()> {
         std::process::exit(1);
     });
 
-    println!("Listening on port {}", port);
+    println!("Listening on {}:{}", host, port);
     server.run().await
 }

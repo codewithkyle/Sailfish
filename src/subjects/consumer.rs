@@ -63,6 +63,19 @@ impl Consumer {
         }
         return Ok(content);
     }
+
+    pub fn bump(&mut self, event_id: &str) -> Result<()> {
+        let event = event_id.split_once("-").unwrap_or(("",""));
+        if event.0 == "" || event.1 == "" {
+            return Err(anyhow!("Invalid token format."));
+        }
+        let offset:u64 = event.0.parse()?;
+        let log_file:u64 = event.1.parse()?;
+        self.log_offset = offset;
+        self.log_file = log_file;
+        update_consumer_in_config(self)?;
+        return Ok(());
+    }
 }
 
 impl Display for Consumer {

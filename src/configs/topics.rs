@@ -287,16 +287,16 @@ pub fn write(topic: &str, content: &[u8]) -> Result<()> {
 
     let content_length = content.len() as u64;
 
-    let eid = generate_key();
+    //let eid = generate_key();
 
-    let capacity = 36+ 8 + content_length as usize;
+    let capacity = 8 + content_length as usize;
 
     let file = get_latest_topic_file(topic)?;
     let mut writer = BufWriter::with_capacity(capacity, file);
     writer.seek(SeekFrom::End(0))?;
 
     // 36 bytes
-    writer.write_all(&eid.as_bytes())?;
+    //writer.write_all(&eid.as_bytes())?;
     writer.write_all(&content_length.to_be_bytes())?;
     writer.write_all(&content)?;
 
@@ -323,9 +323,9 @@ pub fn read(consumer: &mut Consumer) -> Result<Event> {
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(consumer.log_offset))?;
 
-    let mut eid_buffer:Vec<u8> = vec![0u8; 36];
-    reader.read_exact(&mut eid_buffer)?;
-    let eid = String::from_utf8(eid_buffer)?;
+    //let mut eid_buffer:Vec<u8> = vec![0u8; 36];
+    //reader.read_exact(&mut eid_buffer)?;
+    //let eid = String::from_utf8(eid_buffer)?;
 
     let mut content_length_buffer = [0u8; 8];
     reader.read_exact(&mut content_length_buffer)?;
@@ -334,10 +334,10 @@ pub fn read(consumer: &mut Consumer) -> Result<Event> {
     let mut content_buffer:Vec<u8> = vec![0u8; content_length as usize];
     reader.read_exact(&mut content_buffer)?;
 
-    consumer.log_offset += 36 + 8 + content_length;
+    consumer.log_offset += 8 + content_length;
 
     let event = Event {
-        eid,
+        eid: format!("{}-{}", consumer.log_offset, consumer.log_file),
         content: content_buffer,
     };
     
