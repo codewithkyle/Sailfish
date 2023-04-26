@@ -12,19 +12,28 @@ fn create_configs_dir() -> Result<()> {
     return Ok(());
 }
 
-fn get_or_create_consumers_file() -> Result<File> {
-    let path = Path::new("sailfish/configs/consumers");
+pub fn create_consumer_file() -> Result<File> {
+    let path = format!("sailfish/configs/consumers");
+    let path = Path::new(&path);
     let file = OpenOptions::new()
-                    .read(true)
                     .write(true)
                     .create(true)
                     .open(path)?;
     return Ok(file);
 }
 
+pub fn consumers_exists() -> bool {
+    let path = format!("sailfish/configs/consumers");
+    let path = Path::new(&path);
+    return path.exists();
+}
+
 pub fn add_consumer_to_config(consumer: &mut Consumer) -> Result<()> {
     create_configs_dir()?;
-    let file = get_or_create_consumers_file()?;
+    let path = Path::new("sailfish/configs/consumers");
+    let file = OpenOptions::new()
+                    .append(true)
+                    .open(path)?;
 
     let mut writer = BufWriter::new(&file);
     consumer.offset = writer.seek(SeekFrom::End(0))?;
@@ -49,7 +58,11 @@ pub fn add_consumer_to_config(consumer: &mut Consumer) -> Result<()> {
 }
 
 pub fn update_consumer_in_config(consumer: &Consumer) -> Result<()> {
-    let file = get_or_create_consumers_file()?;
+    let path = Path::new("sailfish/configs/consumers");
+    let file = OpenOptions::new()
+                    .write(true)
+                    .open(path)?;
+
     let mut writer = BufWriter::new(&file);
     writer.seek(SeekFrom::Start(consumer.offset + 36 + 8 + consumer.topic.as_bytes().len() as u64))?;
 
@@ -62,7 +75,10 @@ pub fn update_consumer_in_config(consumer: &Consumer) -> Result<()> {
 }
 
 pub fn get_consumer(offset: u64) -> Result<Consumer> {
-    let file = get_or_create_consumers_file()?;
+    let path = Path::new("sailfish/configs/consumers");
+    let file = OpenOptions::new()
+                    .read(true)
+                    .open(path)?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(offset))?;
@@ -104,7 +120,10 @@ pub fn get_consumer(offset: u64) -> Result<Consumer> {
 }
 
 pub fn delete_consumer(consumer: &Consumer) -> Result<()> {
-    let file = get_or_create_consumers_file()?;
+    let path = Path::new("sailfish/configs/consumers");
+    let file = OpenOptions::new()
+                    .write(true)
+                    .open(path)?;
 
     let mut writer = BufWriter::new(&file);
     writer.seek(SeekFrom::Start(consumer.offset))?;
@@ -119,7 +138,10 @@ pub fn delete_consumer(consumer: &Consumer) -> Result<()> {
 }
 
 pub fn reroll_consumer_key(consumer: &Consumer) -> Result<String> {
-    let file = get_or_create_consumers_file()?;
+    let path = Path::new("sailfish/configs/consumers");
+    let file = OpenOptions::new()
+                    .write(true)
+                    .open(path)?;
 
     let mut writer = BufWriter::new(&file);
     writer.seek(SeekFrom::Start(consumer.offset))?;
@@ -132,7 +154,10 @@ pub fn reroll_consumer_key(consumer: &Consumer) -> Result<String> {
 }
 
 pub fn list_consumers() -> Result<()> {
-    let file = get_or_create_consumers_file()?;
+    let path = Path::new("sailfish/configs/consumers");
+    let file = OpenOptions::new()
+                    .read(true)
+                    .open(path)?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
@@ -188,7 +213,10 @@ pub fn list_consumers() -> Result<()> {
 }
 
 pub fn get_oldest_active_log_file(topic: &str) -> Result<Option<u64>> {
-    let file = get_or_create_consumers_file()?;
+    let path = Path::new("sailfish/configs/consumers");
+    let file = OpenOptions::new()
+                    .read(true)
+                    .open(path)?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
