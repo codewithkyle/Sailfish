@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use std::fmt::Display;
-use crate::configs::{topics::{topic_exists, read}, consumers::{add_consumer_to_config, get_consumer, delete_consumer, reroll_consumer_key, update_consumer_in_config}};
+use crate::configs::{topics::{topic_exists, read}, consumers::{add_consumer_to_config, get_consumer, delete_consumer, reroll_consumer_key, update_consumer_in_config, consumers_exists, create_consumer_file}};
 use super::{keys::generate_key, topic::Topic, event::Event};
 use anyhow::{Result,anyhow};
 
@@ -28,6 +28,9 @@ impl Consumer {
             offset: 0,
             key,
         };
+        if !consumers_exists() {
+            create_consumer_file();
+        }
         add_consumer_to_config(&mut consumer)?;
         return Ok(consumer);
     }

@@ -12,19 +12,28 @@ fn create_configs_dir() -> Result<()>{
     return Ok(());
 }
 
-fn get_or_create_producers_file() -> Result<File> {
-    let path = Path::new("sailfish/configs/producers");
-    let file =  OpenOptions::new()
-                    .read(true)
+pub fn create_producers_file() -> Result<File> {
+    let path = format!("sailfish/configs/producers");
+    let path = Path::new(&path);
+    let file = OpenOptions::new()
                     .write(true)
                     .create(true)
                     .open(path)?;
     return Ok(file);
 }
 
+pub fn producers_exists() -> bool {
+    let path = format!("sailfish/configs/producers");
+    let path = Path::new(&path);
+    return path.exists();
+}
+
 pub fn add_producer_to_config(producer: &mut Producer) -> Result<()> {
     create_configs_dir()?;
-    let file = get_or_create_producers_file()?;
+    let path = Path::new("sailfish/configs/producers");
+    let file =  OpenOptions::new()
+                    .append(true)
+                    .open(path)?;
 
     let mut writer = BufWriter::new(&file);
     producer.offset = writer.seek(SeekFrom::End(0))?;
@@ -46,7 +55,10 @@ pub fn add_producer_to_config(producer: &mut Producer) -> Result<()> {
 }
 
 pub fn get_producer(offset: u64) -> Result<Producer> {
-    let file = get_or_create_producers_file()?;
+    let path = Path::new("sailfish/configs/producers");
+    let file =  OpenOptions::new()
+                    .read(true)
+                    .open(path)?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(offset))?;
@@ -76,9 +88,12 @@ pub fn get_producer(offset: u64) -> Result<Producer> {
 }
 
 pub fn delete_producer(producer: &Producer) -> Result<()> {
-    let file = get_or_create_producers_file()?;
+    let path = Path::new("sailfish/configs/producers");
+    let file =  OpenOptions::new()
+                    .write(true)
+                    .open(path)?;
 
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(36, &file);
     writer.seek(SeekFrom::Start(producer.offset))?;
 
     // Overwrite key with null bytes (36)
@@ -91,11 +106,13 @@ pub fn delete_producer(producer: &Producer) -> Result<()> {
 }
 
 pub fn reroll_producer_key(producer: &Producer) -> Result<String> {
-    let file = get_or_create_producers_file()?;
+    let path = Path::new("sailfish/configs/producers");
+    let file =  OpenOptions::new()
+                    .write(true)
+                    .open(path)?;
 
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(36, &file);
     writer.seek(SeekFrom::Start(producer.offset))?;
-
 
     let new_key = generate_key();
     writer.write_all(new_key.as_bytes())?;
@@ -104,7 +121,10 @@ pub fn reroll_producer_key(producer: &Producer) -> Result<String> {
 }
 
 pub fn list_producers() -> Result<()> {
-    let file = get_or_create_producers_file()?;
+    let path = Path::new("sailfish/configs/producers");
+    let file =  OpenOptions::new()
+                    .read(true)
+                    .open(path)?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;

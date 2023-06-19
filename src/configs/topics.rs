@@ -28,8 +28,7 @@ fn create_topic_file(topic: &str, file: usize) -> Result<File> {
     let path = format!("sailfish/logs/{}/{}", topic, file);
     let path = Path::new(&path);
     let file = OpenOptions::new()
-                    .read(true)
-                    .append(true)
+                    .write(true)
                     .create(true)
                     .open(path)?;
     return Ok(file);
@@ -64,7 +63,6 @@ fn get_topic_file(topic: &str, file_id: &u64) -> Result<File> {
     let path = Path::new(&path);
     let file = OpenOptions::new()
                     .read(true)
-                    .append(true)
                     .open(path)?;
     return Ok(file);
 }
@@ -83,19 +81,12 @@ fn create_configs_dir() -> Result<()> {
     return Ok(());
 }
 
-fn get_or_create_topics_file() -> Result<File> {
-    let path = Path::new("sailfish/configs/topics");
-    let file = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .open(path)?;
-    return Ok(file);
-}
-
 pub fn add_topic_to_config(topic: &Topic) -> Result<()> {
     create_configs_dir()?;
-    let file = get_or_create_topics_file()?;
+    let path = Path::new("sailfish/configs/topics");
+    let file = OpenOptions::new()
+                .append(true)
+                .open(path)?;
 
     let mut writer = BufWriter::new(&file);
     writer.seek(SeekFrom::End(0))?;
@@ -117,10 +108,13 @@ pub fn add_topic_to_config(topic: &Topic) -> Result<()> {
 
 pub fn update_topic_in_config(topic: &Topic) -> Result<()> {
     create_configs_dir()?;
+    let path = Path::new("sailfish/configs/topics");
+    let file = OpenOptions::new()
+                .write(true)
+                .open(path)?;
 
-    let file = get_or_create_topics_file()?;
     let name_length = topic.name.as_bytes().len() as u64;
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(16, &file);
 
     // Skip to offset + name len & name value
     writer.seek(SeekFrom::Start(topic.offset + 8 + name_length))?;
@@ -135,7 +129,10 @@ pub fn update_topic_in_config(topic: &Topic) -> Result<()> {
 }
 
 pub fn get_topic_from_config(topic: &mut Topic) -> Result<()> {
-    let file = get_or_create_topics_file()?;
+    let path = Path::new("sailfish/configs/topics");
+    let file = OpenOptions::new()
+                .read(true)
+                .open(path)?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
@@ -179,7 +176,10 @@ pub fn get_topic_from_config(topic: &mut Topic) -> Result<()> {
 }
 
 pub fn delete_topic(topic: &Topic) -> Result<()> {
-    let file = get_or_create_topics_file()?;
+    let path = Path::new("sailfish/configs/topics");
+    let file = OpenOptions::new()
+                .read(true)
+                .open(path)?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
@@ -235,7 +235,10 @@ pub fn delete_topic(topic: &Topic) -> Result<()> {
 }
 
 pub fn list_topics() -> Result<()> {
-    let file = get_or_create_topics_file()?;
+    let path = Path::new("sailfish/configs/topics");
+    let file = OpenOptions::new()
+                .read(true)
+                .open(path)?;
 
     let mut reader = BufReader::new(&file);
     reader.seek(SeekFrom::Start(0))?;
