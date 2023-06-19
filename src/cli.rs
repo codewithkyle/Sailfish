@@ -16,7 +16,6 @@ enum Commands {
     Add,
     Delete,
     Reroll,
-    Update,
     Stat,
     List,
     Write,
@@ -40,7 +39,6 @@ impl FromStr for Commands {
             "remove" => return Ok(Commands::Delete),
             "delete" => return Ok(Commands::Delete),
             "reroll" => return Ok(Commands::Reroll),
-            "update" => return Ok(Commands::Update),
             "stat" => return Ok(Commands::Stat),
             "list" => return Ok(Commands::List),
             "write" => return Ok(Commands::Write),
@@ -83,7 +81,6 @@ fn main(){
         Commands::Cleanup => cleanup(),
         Commands::Add => add(),
         Commands::Delete => delete(),
-        Commands::Update => update(),
         Commands::Reroll => reroll(),
         Commands::Stat => stat_subject(),
         Commands::List => list_subject(),
@@ -235,21 +232,6 @@ fn delete_topic(){
         std::process::exit(1);
     });
     println!("{{ \"success\": true  }}");
-}
-
-fn update() {
-    let subject = get_subject();
-    match subject {
-        Subject::Producer => {
-            output_error("Producers cannot be updated.");
-            std::process::exit(1);
-        },
-        Subject::Consumer => {
-            output_error("Consumers cannot be updated.");
-            std::process::exit(1);
-        },
-        Subject::Topic => todo!("delete topic"),
-    }
 }
 
 fn reroll() {

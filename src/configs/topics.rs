@@ -63,7 +63,6 @@ fn get_topic_file(topic: &str, file_id: &u64) -> Result<File> {
     let path = Path::new(&path);
     let file = OpenOptions::new()
                     .read(true)
-                    .append(true)
                     .open(path)?;
     return Ok(file);
 }
