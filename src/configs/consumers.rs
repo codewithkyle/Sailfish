@@ -63,7 +63,7 @@ pub fn update_consumer_in_config(consumer: &Consumer) -> Result<()> {
                     .write(true)
                     .open(path)?;
 
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(16, &file);
     writer.seek(SeekFrom::Start(consumer.offset + 36 + 8 + consumer.topic.as_bytes().len() as u64))?;
 
     writer.write_all(&consumer.log_file.to_be_bytes())?;
@@ -125,7 +125,7 @@ pub fn delete_consumer(consumer: &Consumer) -> Result<()> {
                     .write(true)
                     .open(path)?;
 
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(36, &file);
     writer.seek(SeekFrom::Start(consumer.offset))?;
 
     // Overwrite key with null bytes (36)
@@ -143,7 +143,7 @@ pub fn reroll_consumer_key(consumer: &Consumer) -> Result<String> {
                     .write(true)
                     .open(path)?;
 
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(36, &file);
     writer.seek(SeekFrom::Start(consumer.offset))?;
 
 

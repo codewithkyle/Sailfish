@@ -93,7 +93,7 @@ pub fn delete_producer(producer: &Producer) -> Result<()> {
                     .write(true)
                     .open(path)?;
 
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(36, &file);
     writer.seek(SeekFrom::Start(producer.offset))?;
 
     // Overwrite key with null bytes (36)
@@ -111,9 +111,8 @@ pub fn reroll_producer_key(producer: &Producer) -> Result<String> {
                     .write(true)
                     .open(path)?;
 
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(36, &file);
     writer.seek(SeekFrom::Start(producer.offset))?;
-
 
     let new_key = generate_key();
     writer.write_all(new_key.as_bytes())?;

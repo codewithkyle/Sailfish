@@ -114,7 +114,7 @@ pub fn update_topic_in_config(topic: &Topic) -> Result<()> {
                 .open(path)?;
 
     let name_length = topic.name.as_bytes().len() as u64;
-    let mut writer = BufWriter::new(&file);
+    let mut writer = BufWriter::with_capacity(16, &file);
 
     // Skip to offset + name len & name value
     writer.seek(SeekFrom::Start(topic.offset + 8 + name_length))?;
